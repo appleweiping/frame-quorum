@@ -1,0 +1,32 @@
+name: Feature request
+description: Propose a focused, explainable capability
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow cannot be expressed with the current scanner, constraints, or reports?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include configuration, manifest, and determinism implications.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Project principles
+      options:
+        - label: The proposal can remain offline and deterministic by default.
+          required: true
+        - label: The proposal can expose its decision evidence in the manifest.
+          required: true

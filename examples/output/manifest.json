@@ -1,0 +1,748 @@
+{
+  "schema_version": "1.0",
+  "kind": "frame-quorum-selection",
+  "summary": {
+    "frame_count": 18,
+    "selected_count": 6,
+    "rejected_count": 12,
+    "selected_indices": [
+      0,
+      5,
+      7,
+      10,
+      15,
+      17
+    ]
+  },
+  "scan_config": {
+    "recursive": false,
+    "timestamp_mode": "filename",
+    "frame_rate": 1.0,
+    "timestamp_regex": "_(?P<ts>\\d+)ms$",
+    "timestamp_unit": "milliseconds",
+    "extensions": [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".webp",
+      ".bmp",
+      ".tif",
+      ".tiff"
+    ]
+  },
+  "selection_config": {
+    "budget": 6,
+    "min_gap": 0.0,
+    "duplicate_threshold": 0.035,
+    "quality_weight": 0.32,
+    "change_weight": 0.38,
+    "coverage_weight": 0.3,
+    "keep_endpoints": true
+  },
+  "frames": [
+    {
+      "index": 0,
+      "path": "frame_00000ms.png",
+      "timestamp": 0.0,
+      "width": 640,
+      "height": 400,
+      "byte_size": 2916,
+      "metrics": {
+        "perceptual_hash": "0000608068686880",
+        "luminance": 0.21298866,
+        "entropy": 0.3010604,
+        "sharpness": 0.189765,
+        "colorfulness": 0.20977076,
+        "mean_red": 0.15457874,
+        "mean_green": 0.22162416,
+        "mean_blue": 0.3184218
+      },
+      "decision": {
+        "index": 0,
+        "path": "frame_00000ms.png",
+        "selected": true,
+        "rank": 1,
+        "reason_code": "endpoint_start",
+        "reason": "Selected to preserve the beginning of the sequence.",
+        "nearest_selected_index": 5,
+        "scores": {
+          "quality": 0.23272,
+          "change": 0.0,
+          "coverage": 1.0,
+          "utility": 0.37447
+        }
+      }
+    },
+    {
+      "index": 1,
+      "path": "frame_00500ms.png",
+      "timestamp": 0.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 2891,
+      "metrics": {
+        "perceptual_hash": "00003040b4343448",
+        "luminance": 0.21296415,
+        "entropy": 0.30179033,
+        "sharpness": 0.19186995,
+        "colorfulness": 0.20954591,
+        "mean_red": 0.15455538,
+        "mean_green": 0.22159697,
+        "mean_blue": 0.31837546
+      },
+      "decision": {
+        "index": 1,
+        "path": "frame_00500ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 0,
+        "scores": {
+          "quality": 0.233877,
+          "change": 0.203136,
+          "coverage": 0.117647,
+          "utility": 0.187326
+        }
+      }
+    },
+    {
+      "index": 2,
+      "path": "frame_01000ms.png",
+      "timestamp": 1.0,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3016,
+      "metrics": {
+        "perceptual_hash": "000008304a4d4c70",
+        "luminance": 0.21297986,
+        "entropy": 0.30167195,
+        "sharpness": 0.18961237,
+        "colorfulness": 0.20963832,
+        "mean_red": 0.15457376,
+        "mean_green": 0.22161037,
+        "mean_blue": 0.31841452
+      },
+      "decision": {
+        "index": 2,
+        "path": "frame_01000ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 7,
+        "scores": {
+          "quality": 0.232838,
+          "change": 0.253914,
+          "coverage": 0.235294,
+          "utility": 0.241584
+        }
+      }
+    },
+    {
+      "index": 3,
+      "path": "frame_01500ms.png",
+      "timestamp": 1.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3026,
+      "metrics": {
+        "perceptual_hash": "0000041826262679",
+        "luminance": 0.21298292,
+        "entropy": 0.30025583,
+        "sharpness": 0.19151701,
+        "colorfulness": 0.20970218,
+        "mean_red": 0.15457376,
+        "mean_green": 0.22161343,
+        "mean_blue": 0.31840571
+      },
+      "decision": {
+        "index": 3,
+        "path": "frame_01500ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 0,
+        "scores": {
+          "quality": 0.233213,
+          "change": 0.19297,
+          "coverage": 0.235294,
+          "utility": 0.218545
+        }
+      }
+    },
+    {
+      "index": 4,
+      "path": "frame_02000ms.png",
+      "timestamp": 2.0,
+      "width": 640,
+      "height": 400,
+      "byte_size": 2987,
+      "metrics": {
+        "perceptual_hash": "000003040b13136c",
+        "luminance": 0.21297871,
+        "entropy": 0.30082904,
+        "sharpness": 0.19113015,
+        "colorfulness": 0.2095047,
+        "mean_red": 0.15457376,
+        "mean_green": 0.22161535,
+        "mean_blue": 0.31839997
+      },
+      "decision": {
+        "index": 4,
+        "path": "frame_02000ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 0,
+        "scores": {
+          "quality": 0.2332,
+          "change": 0.213283,
+          "coverage": 0.117647,
+          "utility": 0.190965
+        }
+      }
+    },
+    {
+      "index": 5,
+      "path": "frame_02500ms.png",
+      "timestamp": 2.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3632,
+      "metrics": {
+        "perceptual_hash": "b5b44a956a686890",
+        "luminance": 0.28044539,
+        "entropy": 0.38983506,
+        "sharpness": 0.23958969,
+        "colorfulness": 0.32311389,
+        "mean_red": 0.15121553,
+        "mean_green": 0.33902765,
+        "mean_blue": 0.32302083
+      },
+      "decision": {
+        "index": 5,
+        "path": "frame_02500ms.png",
+        "selected": true,
+        "rank": 4,
+        "reason_code": "highest_utility",
+        "reason": "Selected at rank 4 with utility 0.423; quality=0.309, change=0.389, coverage=0.588.",
+        "nearest_selected_index": 7,
+        "scores": {
+          "quality": 0.30888,
+          "change": 0.389339,
+          "coverage": 0.588235,
+          "utility": 0.423261
+        }
+      }
+    },
+    {
+      "index": 6,
+      "path": "frame_03000ms.png",
+      "timestamp": 3.0,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3636,
+      "metrics": {
+        "perceptual_hash": "b5b44ac5b2343448",
+        "luminance": 0.28045918,
+        "entropy": 0.39147285,
+        "sharpness": 0.2417275,
+        "colorfulness": 0.32303471,
+        "mean_red": 0.15122664,
+        "mean_green": 0.33903952,
+        "mean_blue": 0.32300705
+      },
+      "decision": {
+        "index": 6,
+        "path": "frame_03000ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 5,
+        "scores": {
+          "quality": 0.3104,
+          "change": 0.182817,
+          "coverage": 0.117647,
+          "utility": 0.204093
+        }
+      }
+    },
+    {
+      "index": 7,
+      "path": "frame_03500ms.png",
+      "timestamp": 3.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3574,
+      "metrics": {
+        "perceptual_hash": "b5b44ab54a4d4c70",
+        "luminance": 0.28043007,
+        "entropy": 0.38986586,
+        "sharpness": 0.23955472,
+        "colorfulness": 0.32305524,
+        "mean_red": 0.15119907,
+        "mean_green": 0.3390085,
+        "mean_blue": 0.3230059
+      },
+      "decision": {
+        "index": 7,
+        "path": "frame_03500ms.png",
+        "selected": true,
+        "rank": 6,
+        "reason_code": "highest_utility",
+        "reason": "Selected at rank 6 with utility 0.247; quality=0.309, change=0.203, coverage=0.235.",
+        "nearest_selected_index": 5,
+        "scores": {
+          "quality": 0.308864,
+          "change": 0.203134,
+          "coverage": 0.235294,
+          "utility": 0.246616
+        }
+      }
+    },
+    {
+      "index": 8,
+      "path": "frame_04000ms.png",
+      "timestamp": 4.0,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3631,
+      "metrics": {
+        "perceptual_hash": "b5b44a9926262679",
+        "luminance": 0.28046186,
+        "entropy": 0.38925552,
+        "sharpness": 0.24132262,
+        "colorfulness": 0.32305828,
+        "mean_red": 0.15122817,
+        "mean_green": 0.33903569,
+        "mean_blue": 0.3230239
+      },
+      "decision": {
+        "index": 8,
+        "path": "frame_04000ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 5,
+        "scores": {
+          "quality": 0.309446,
+          "change": 0.182822,
+          "coverage": 0.117647,
+          "utility": 0.203789
+        }
+      }
+    },
+    {
+      "index": 9,
+      "path": "frame_04500ms.png",
+      "timestamp": 4.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3646,
+      "metrics": {
+        "perceptual_hash": "b5b44ab50b13136c",
+        "luminance": 0.28045343,
+        "entropy": 0.38999329,
+        "sharpness": 0.24108521,
+        "colorfulness": 0.3230072,
+        "mean_red": 0.15122166,
+        "mean_green": 0.3390311,
+        "mean_blue": 0.32301471
+      },
+      "decision": {
+        "index": 9,
+        "path": "frame_04500ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 7,
+        "scores": {
+          "quality": 0.309587,
+          "change": 0.182815,
+          "coverage": 0.117647,
+          "utility": 0.203832
+        }
+      }
+    },
+    {
+      "index": 10,
+      "path": "frame_05000ms.png",
+      "timestamp": 5.0,
+      "width": 640,
+      "height": 400,
+      "byte_size": 4057,
+      "metrics": {
+        "perceptual_hash": "b594428373636c92",
+        "luminance": 0.33334099,
+        "entropy": 0.47954465,
+        "sharpness": 0.26723604,
+        "colorfulness": 0.35689105,
+        "mean_red": 0.44932828,
+        "mean_green": 0.28794769,
+        "mean_blue": 0.25800551
+      },
+      "decision": {
+        "index": 10,
+        "path": "frame_05000ms.png",
+        "selected": true,
+        "rank": 3,
+        "reason_code": "highest_utility",
+        "reason": "Selected at rank 3 with utility 0.485; quality=0.359, change=0.324, coverage=0.824.",
+        "nearest_selected_index": 15,
+        "scores": {
+          "quality": 0.359475,
+          "change": 0.32416,
+          "coverage": 0.823529,
+          "utility": 0.485272
+        }
+      }
+    },
+    {
+      "index": 11,
+      "path": "frame_05500ms.png",
+      "timestamp": 5.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3904,
+      "metrics": {
+        "perceptual_hash": "b59442e3b3333442",
+        "luminance": 0.33331955,
+        "entropy": 0.48085877,
+        "sharpness": 0.26901773,
+        "colorfulness": 0.35670621,
+        "mean_red": 0.4493053,
+        "mean_green": 0.28792854,
+        "mean_blue": 0.25794462
+      },
+      "decision": {
+        "index": 11,
+        "path": "frame_05500ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 10,
+        "scores": {
+          "quality": 0.3607,
+          "change": 0.121887,
+          "coverage": 0.117647,
+          "utility": 0.197035
+        }
+      }
+    },
+    {
+      "index": 12,
+      "path": "frame_06000ms.png",
+      "timestamp": 6.0,
+      "width": 640,
+      "height": 400,
+      "byte_size": 4041,
+      "metrics": {
+        "perceptual_hash": "b59442a3534b4d72",
+        "luminance": 0.33333104,
+        "entropy": 0.47999014,
+        "sharpness": 0.26705798,
+        "colorfulness": 0.35677713,
+        "mean_red": 0.44932138,
+        "mean_green": 0.28793313,
+        "mean_blue": 0.25800283
+      },
+      "decision": {
+        "index": 12,
+        "path": "frame_06000ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 17,
+        "scores": {
+          "quality": 0.359528,
+          "change": 0.152354,
+          "coverage": 0.235294,
+          "utility": 0.243532
+        }
+      }
+    },
+    {
+      "index": 13,
+      "path": "frame_06500ms.png",
+      "timestamp": 6.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3910,
+      "metrics": {
+        "perceptual_hash": "b59442a313262659",
+        "luminance": 0.32886451,
+        "entropy": 0.45976081,
+        "sharpness": 0.25800328,
+        "colorfulness": 0.35158583,
+        "mean_red": 0.44828546,
+        "mean_green": 0.28190985,
+        "mean_blue": 0.25240579
+      },
+      "decision": {
+        "index": 13,
+        "path": "frame_06500ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 10,
+        "scores": {
+          "quality": 0.347335,
+          "change": 0.153987,
+          "coverage": 0.235294,
+          "utility": 0.24025
+        }
+      }
+    },
+    {
+      "index": 14,
+      "path": "frame_07000ms.png",
+      "timestamp": 7.0,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3991,
+      "metrics": {
+        "perceptual_hash": "b59442a313131364",
+        "luminance": 0.3278822,
+        "entropy": 0.45708222,
+        "sharpness": 0.25589833,
+        "colorfulness": 0.34819264,
+        "mean_red": 0.44864583,
+        "mean_green": 0.28029527,
+        "mean_blue": 0.25116077
+      },
+      "decision": {
+        "index": 14,
+        "path": "frame_07000ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 17,
+        "scores": {
+          "quality": 0.344772,
+          "change": 0.132428,
+          "coverage": 0.117647,
+          "utility": 0.195944
+        }
+      }
+    },
+    {
+      "index": 15,
+      "path": "frame_07500ms.png",
+      "timestamp": 7.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 4256,
+      "metrics": {
+        "perceptual_hash": "b5b472b373636c92",
+        "luminance": 0.31195964,
+        "entropy": 0.5943563,
+        "sharpness": 0.37810868,
+        "colorfulness": 0.30529195,
+        "mean_red": 0.34434321,
+        "mean_green": 0.27918122,
+        "mean_blue": 0.3924437
+      },
+      "decision": {
+        "index": 15,
+        "path": "frame_07500ms.png",
+        "selected": true,
+        "rank": 5,
+        "reason_code": "highest_utility",
+        "reason": "Selected at rank 5 with utility 0.306; quality=0.439, change=0.250, coverage=0.235.",
+        "nearest_selected_index": 10,
+        "scores": {
+          "quality": 0.439232,
+          "change": 0.250378,
+          "coverage": 0.235294,
+          "utility": 0.306286
+        }
+      }
+    },
+    {
+      "index": 16,
+      "path": "frame_08000ms.png",
+      "timestamp": 8.0,
+      "width": 640,
+      "height": 400,
+      "byte_size": 4257,
+      "metrics": {
+        "perceptual_hash": "b5b472e3b333bc42",
+        "luminance": 0.31196193,
+        "entropy": 0.59560408,
+        "sharpness": 0.38015004,
+        "colorfulness": 0.30515407,
+        "mean_red": 0.34435164,
+        "mean_green": 0.27918237,
+        "mean_blue": 0.39243413
+      },
+      "decision": {
+        "index": 16,
+        "path": "frame_08000ms.png",
+        "selected": false,
+        "rank": null,
+        "reason_code": "budget_exhausted",
+        "reason": "Skipped after the selection budget of 6 was filled.",
+        "nearest_selected_index": 15,
+        "scores": {
+          "quality": 0.44056,
+          "change": 0.121877,
+          "coverage": 0.117647,
+          "utility": 0.222587
+        }
+      }
+    },
+    {
+      "index": 17,
+      "path": "frame_08500ms.png",
+      "timestamp": 8.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 4192,
+      "metrics": {
+        "perceptual_hash": "b5b452b3534b4c72",
+        "luminance": 0.31194087,
+        "entropy": 0.59372935,
+        "sharpness": 0.37801435,
+        "colorfulness": 0.30517961,
+        "mean_red": 0.34432751,
+        "mean_green": 0.27915786,
+        "mean_blue": 0.39242839
+      },
+      "decision": {
+        "index": 17,
+        "path": "frame_08500ms.png",
+        "selected": true,
+        "rank": 2,
+        "reason_code": "endpoint_end",
+        "reason": "Selected to preserve the end of the sequence.",
+        "nearest_selected_index": 15,
+        "scores": {
+          "quality": 0.438948,
+          "change": 0.162507,
+          "coverage": 1.0,
+          "utility": 0.502216
+        }
+      }
+    }
+  ],
+  "selected": [
+    {
+      "index": 0,
+      "path": "frame_00000ms.png",
+      "timestamp": 0.0,
+      "width": 640,
+      "height": 400,
+      "byte_size": 2916,
+      "metrics": {
+        "perceptual_hash": "0000608068686880",
+        "luminance": 0.21298866,
+        "entropy": 0.3010604,
+        "sharpness": 0.189765,
+        "colorfulness": 0.20977076,
+        "mean_red": 0.15457874,
+        "mean_green": 0.22162416,
+        "mean_blue": 0.3184218
+      }
+    },
+    {
+      "index": 5,
+      "path": "frame_02500ms.png",
+      "timestamp": 2.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3632,
+      "metrics": {
+        "perceptual_hash": "b5b44a956a686890",
+        "luminance": 0.28044539,
+        "entropy": 0.38983506,
+        "sharpness": 0.23958969,
+        "colorfulness": 0.32311389,
+        "mean_red": 0.15121553,
+        "mean_green": 0.33902765,
+        "mean_blue": 0.32302083
+      }
+    },
+    {
+      "index": 7,
+      "path": "frame_03500ms.png",
+      "timestamp": 3.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 3574,
+      "metrics": {
+        "perceptual_hash": "b5b44ab54a4d4c70",
+        "luminance": 0.28043007,
+        "entropy": 0.38986586,
+        "sharpness": 0.23955472,
+        "colorfulness": 0.32305524,
+        "mean_red": 0.15119907,
+        "mean_green": 0.3390085,
+        "mean_blue": 0.3230059
+      }
+    },
+    {
+      "index": 10,
+      "path": "frame_05000ms.png",
+      "timestamp": 5.0,
+      "width": 640,
+      "height": 400,
+      "byte_size": 4057,
+      "metrics": {
+        "perceptual_hash": "b594428373636c92",
+        "luminance": 0.33334099,
+        "entropy": 0.47954465,
+        "sharpness": 0.26723604,
+        "colorfulness": 0.35689105,
+        "mean_red": 0.44932828,
+        "mean_green": 0.28794769,
+        "mean_blue": 0.25800551
+      }
+    },
+    {
+      "index": 15,
+      "path": "frame_07500ms.png",
+      "timestamp": 7.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 4256,
+      "metrics": {
+        "perceptual_hash": "b5b472b373636c92",
+        "luminance": 0.31195964,
+        "entropy": 0.5943563,
+        "sharpness": 0.37810868,
+        "colorfulness": 0.30529195,
+        "mean_red": 0.34434321,
+        "mean_green": 0.27918122,
+        "mean_blue": 0.3924437
+      }
+    },
+    {
+      "index": 17,
+      "path": "frame_08500ms.png",
+      "timestamp": 8.5,
+      "width": 640,
+      "height": 400,
+      "byte_size": 4192,
+      "metrics": {
+        "perceptual_hash": "b5b452b3534b4c72",
+        "luminance": 0.31194087,
+        "entropy": 0.59372935,
+        "sharpness": 0.37801435,
+        "colorfulness": 0.30517961,
+        "mean_red": 0.34432751,
+        "mean_green": 0.27915786,
+        "mean_blue": 0.39242839
+      }
+    }
+  ]
+}
