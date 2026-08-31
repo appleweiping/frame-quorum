@@ -57,6 +57,13 @@ The constants are explicit baseline policy, not learned estimates.
 5. selected frames respect minimum gap and near-duplicate constraints;
 6. the same records and configuration produce the same result.
 
+Public integer fields are bounded before sorting, arithmetic, formatting, or JSON encoding. Frame indices,
+selection indices, ranks, dimensions, byte sizes, budgets, and renderer sizing arguments fit a non-negative signed
+64-bit integer; fields such as dimensions, ranks, and budgets are additionally nonzero. The difference hash is the
+single unsigned 64-bit exception. A manifest's aggregate byte count must remain within the signed 64-bit range.
+Continuous settings and timestamps accept finite floats or signed-64 integer spellings. Operation boundaries
+revalidate documented field bounds and result relationships because callers can construct frozen records directly.
+
 Endpoint preservation is best-effort. The beginning is reserved first. The end is reserved only if it satisfies
 constraints against earlier reservations. A one-frame budget therefore chooses the first frame, which is explicit
 in its `endpoint_start` reason.

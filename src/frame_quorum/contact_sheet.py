@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 
 from .errors import ConfigurationError, ScanError
 from .metrics import measure_image
-from .models import SelectionResult
+from .models import SelectionResult, _require_int64
 
 _BACKGROUND = "#101722"
 _CARD = "#1b2736"
@@ -28,9 +28,11 @@ def render_contact_sheet(
 ) -> Path:
     """Create a PNG contact sheet using only selected source images."""
 
-    if isinstance(columns, bool) or not isinstance(columns, int) or columns < 1:
-        raise ConfigurationError("contact-sheet columns must be at least one")
-    if isinstance(thumbnail_width, bool) or not isinstance(thumbnail_width, int) or thumbnail_width < 96:
+    if not isinstance(result, SelectionResult):
+        raise ConfigurationError("result must be a SelectionResult")
+    _require_int64(columns, "contact-sheet columns", minimum=1)
+    _require_int64(thumbnail_width, "thumbnail width", minimum=1)
+    if thumbnail_width < 96:
         raise ConfigurationError("thumbnail width must be at least 96 pixels")
     selected = result.selected_frames
     if not selected:

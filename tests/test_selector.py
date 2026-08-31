@@ -149,8 +149,33 @@ def test_non_frame_input_is_rejected() -> None:
 
 
 def test_boolean_frame_index_is_rejected() -> None:
-    with pytest.raises(ConfigurationError, match="indices"):
+    with pytest.raises(ConfigurationError, match="frame index"):
         select_frames([replace(_frame(0), index=True)])
+
+
+@pytest.mark.parametrize("index", [-1, 1 << 63, 10**500])
+def test_frame_index_must_fit_nonnegative_signed_64_bits(index: int) -> None:
+    with pytest.raises(ConfigurationError, match="frame index must be an integer between 0"):
+        select_frames([replace(_frame(0, timestamp=0.0), index=index)])
+
+
+def test_maximum_signed_64_bit_frame_index_is_supported() -> None:
+    maximum = (1 << 63) - 1
+    result = select_frames([replace(_frame(0, timestamp=0.0), index=maximum)])
+    assert result.selected_indices == (maximum,)
+
+
+def test_adjacent_large_indices_remain_distinct_time_coordinates() -> None:
+    maximum = (1 << 63) - 1
+    frames = (
+        _frame(maximum - 1, hash_value=0),
+        _frame(maximum, hash_value=(1 << 64) - 1),
+    )
+    result = select_frames(
+        frames,
+        SelectionConfig(budget=2, min_gap=0.5, duplicate_threshold=0),
+    )
+    assert result.selected_indices == (maximum - 1, maximum)
 
 
 def test_partial_timestamps_are_rejected() -> None:
@@ -174,6 +199,7 @@ def test_decreasing_timestamps_are_rejected() -> None:
         SelectionConfig(duplicate_threshold=float("inf")),
         SelectionConfig(quality_weight=float("nan")),
         SelectionConfig(budget=True),
+        SelectionConfig(budget=1 << 63),
         SelectionConfig(keep_endpoints=1),
         SelectionConfig(quality_weight=0, change_weight=0, coverage_weight=0),
         SelectionConfig(quality_weight=1e308, change_weight=1e308, coverage_weight=1e308),
@@ -192,7 +218,7 @@ def test_nonfinite_frame_timestamp_is_rejected() -> None:
 
 
 def test_unbounded_frame_index_is_rejected_as_time_coordinate() -> None:
-    with pytest.raises(ConfigurationError, match="coordinates"):
+    with pytest.raises(ConfigurationError, match="frame index"):
         select_frames([_frame(10**400)])
 
 
@@ -215,6 +241,31 @@ def test_unbounded_frame_metric_is_rejected() -> None:
     frame = _frame(0)
     broken = replace(frame, metrics=replace(frame.metrics, sharpness=10**400))
     with pytest.raises(ConfigurationError, match="metrics"):
+        select_frames([broken])
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("width", False),
+        ("width", 0),
+        ("width", 1 << 63),
+        ("height", -1),
+        ("height", 10**500),
+        ("byte_size", True),
+        ("byte_size", -1),
+        ("byte_size", 1 << 63),
+    ],
+)
+def test_frame_integer_fields_have_stable_signed_64_bit_bounds(field: str, value: int) -> None:
+    with pytest.raises(ConfigurationError, match="must be an integer between"):
+        select_frames([replace(_frame(0), **{field: value})])
+
+
+@pytest.mark.parametrize("hash_value", [-1, True, 1 << 64, 10**500])
+def test_perceptual_hash_must_fit_unsigned_64_bits(hash_value: int) -> None:
+    broken = replace(_frame(0), metrics=replace(_frame(0).metrics, perceptual_hash=hash_value))
+    with pytest.raises(ConfigurationError, match="perceptual hash"):
         select_frames([broken])
 
 

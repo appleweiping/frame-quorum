@@ -10,12 +10,11 @@ from .metrics import content_distance
 from .models import (
     Frame,
     FrameDecision,
-    FrameMetrics,
     ScoreBreakdown,
     SelectionConfig,
     SelectionResult,
     _is_finite_number,
-    _require_safe_text,
+    _require_int64,
 )
 
 
@@ -44,6 +43,8 @@ def select_frames(
         raise ConfigurationError("frames must be an iterable of Frame objects") from error
     if any(not isinstance(frame, Frame) for frame in supplied):
         raise ConfigurationError("every input must be a Frame")
+    for frame in supplied:
+        _require_int64(frame.index, "frame index")
     ordered = tuple(sorted(supplied, key=lambda frame: frame.index))
     coordinate_span = _validate_frames(ordered)
     if not ordered:
@@ -110,15 +111,17 @@ def select_frames(
         )
         for frame in ordered
     )
-    return SelectionResult(ordered, selected_sorted, decisions, options)
+    result = SelectionResult(ordered, selected_sorted, decisions, options)
+    result.validate()
+    return result
 
 
-def _validate_frames(frames: tuple[Frame, ...]) -> float:
+def _validate_frames(frames: tuple[Frame, ...]) -> float | int:
     if any(not isinstance(frame, Frame) for frame in frames):
         raise ConfigurationError("every input must be a Frame")
+    for frame in frames:
+        frame.validate()
     indices = [frame.index for frame in frames]
-    if any(isinstance(index, bool) or not isinstance(index, int) for index in indices):
-        raise ConfigurationError("frame indices must be integers")
     if len(indices) != len(set(indices)):
         raise ConfigurationError("frame indices must be unique")
     timestamps = [frame.timestamp for frame in frames if frame.timestamp is not None]
@@ -129,41 +132,10 @@ def _validate_frames(frames: tuple[Frame, ...]) -> float:
     if any(right < left for left, right in pairwise(timestamps)):
         raise ConfigurationError("frame timestamps must be non-decreasing")
     span = _coordinate_span(frames)
-    for frame in frames:
-        _require_safe_text(frame.relative_path, "frame relative path")
-        if any(
-            isinstance(value, bool) or not isinstance(value, int) or value < minimum
-            for value, minimum in (
-                (frame.width, 1),
-                (frame.height, 1),
-                (frame.byte_size, 0),
-            )
-        ):
-            raise ConfigurationError("frame dimensions and byte sizes must be valid integers")
-        metrics = frame.metrics
-        if not isinstance(metrics, FrameMetrics):
-            raise ConfigurationError("frame metrics must be FrameMetrics")
-        if (
-            isinstance(metrics.perceptual_hash, bool)
-            or not isinstance(metrics.perceptual_hash, int)
-            or not 0 <= metrics.perceptual_hash < 2**64
-        ):
-            raise ConfigurationError("perceptual hashes must be unsigned 64-bit integers")
-        normalized_metrics = (
-            metrics.luminance,
-            metrics.entropy,
-            metrics.sharpness,
-            metrics.colorfulness,
-            metrics.mean_red,
-            metrics.mean_green,
-            metrics.mean_blue,
-        )
-        if any(not _is_finite_number(value) or not 0 <= value <= 1 for value in normalized_metrics):
-            raise ConfigurationError("frame metrics must be finite values between zero and one")
     return span
 
 
-def _coordinate_span(frames: tuple[Frame, ...]) -> float:
+def _coordinate_span(frames: tuple[Frame, ...]) -> float | int:
     try:
         coordinates = [frame.time_coordinate for frame in frames]
         span = max(coordinates, default=0.0) - min(coordinates, default=0.0)
@@ -195,7 +167,7 @@ def _reserve_endpoint(
     scores: dict[int, ScoreBreakdown],
     intrinsic: dict[int, _Intrinsic],
     config: SelectionConfig,
-    coordinate_span: float,
+    coordinate_span: float | int,
 ) -> None:
     if not selected or _passes_constraints(frame, frame_map, selected, config):
         scores[frame.index] = _score(frame, frame_map, selected, intrinsic, config, coordinate_span)
@@ -226,7 +198,7 @@ def _score(
     selected: list[int] | tuple[int, ...],
     intrinsic: dict[int, _Intrinsic],
     config: SelectionConfig,
-    coordinate_span: float,
+    coordinate_span: float | int,
 ) -> ScoreBreakdown:
     values = intrinsic[frame.index]
     coverage = _coverage(frame, frame_map, selected, coordinate_span)
@@ -243,7 +215,7 @@ def _coverage(
     frame: Frame,
     frame_map: dict[int, Frame],
     selected: list[int] | tuple[int, ...],
-    coordinate_span: float,
+    coordinate_span: float | int,
 ) -> float:
     if not selected:
         return 1.0
@@ -262,7 +234,7 @@ def _decision(
     selection_scores: dict[int, ScoreBreakdown],
     intrinsic: dict[int, _Intrinsic],
     config: SelectionConfig,
-    coordinate_span: float,
+    coordinate_span: float | int,
 ) -> FrameDecision:
     nearest = _nearest_selected(frame, frame_map, selected)
     if frame.index in ranks:

@@ -123,12 +123,22 @@ for frame in result.selected_frames:
 ```
 
 The records are frozen dataclasses. The selector never modifies the source images or copies them into its output.
+Selection, manifest, and contact-sheet operations validate documented field bounds and result structure, including
+records constructed directly. Invalid values raise `ConfigurationError` instead of leaking interpreter-specific
+conversion failures.
 
 ## Manifest contract
 
 Manifests declare `schema_version: "1.0"` and `kind`. Floating-point score fields are rounded to six decimal
 places. Paths are relative to the scanned input root. The selection manifest includes both a concise `selected`
 list and the complete frame list with decisions, allowing consumers to audit rejection as well as inclusion.
+
+Integer identifiers, budgets, ranks, dimensions, and byte counts use the non-negative signed 64-bit range
+(`0` through `2^63 - 1`), with strictly positive lower bounds where zero has no meaning. Perceptual hashes are
+unsigned 64-bit values. Aggregate byte counts must also fit the signed 64-bit range. These explicit bounds keep
+validation and JSON behavior stable across supported Python versions, including for directly constructed records.
+Continuous numeric settings and timestamps accept finite floating-point values. When supplied as Python integers,
+they must fit the signed 64-bit range so every accepted value also has a stable JSON representation.
 
 Minor releases may add fields. Removing or changing field meaning requires a schema-version change.
 

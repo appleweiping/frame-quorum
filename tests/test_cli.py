@@ -47,6 +47,29 @@ def test_select_creates_manifest_and_contact_sheet(
         assert sheet.format == "PNG"
 
 
+@pytest.mark.parametrize(
+    ("option", "value", "message"),
+    [
+        ("--budget", str(1 << 63), "budget must be an integer"),
+        ("--columns", str(1 << 63), "contact-sheet columns"),
+        ("--thumbnail-width", str(10**500), "thumbnail width"),
+    ],
+)
+def test_select_rejects_cli_integers_outside_signed_64_bits(
+    image_factory: Callable[..., Path],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    option: str,
+    value: str,
+    message: str,
+) -> None:
+    frames = tmp_path / "frames"
+    image_factory("frame.png", directory=frames)
+    status = main(["select", str(frames), "--output-dir", str(tmp_path / "result"), option, value])
+    assert status == 2
+    assert message in capsys.readouterr().err
+
+
 def test_select_accepts_filename_timestamp_rule(image_factory: Callable[..., Path], tmp_path: Path) -> None:
     frames = tmp_path / "frames"
     image_factory("frame_1000ms.png", pattern=1, directory=frames)

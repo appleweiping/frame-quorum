@@ -10,6 +10,10 @@ from typing import Any
 
 from .errors import ConfigurationError
 
+_MAX_SIGNED_64 = (1 << 63) - 1
+_MIN_SIGNED_64 = -(1 << 63)
+_MAX_UNSIGNED_64 = (1 << 64) - 1
+
 
 @dataclass(frozen=True, slots=True)
 class ScanConfig:
@@ -32,12 +36,7 @@ class ScanConfig:
             "none",
         }:
             raise ConfigurationError("timestamp_mode must be index, filename, mtime, or none")
-        if (
-            isinstance(self.frame_rate, bool)
-            or not isinstance(self.frame_rate, (int, float))
-            or not _is_finite_number(self.frame_rate)
-            or self.frame_rate <= 0
-        ):
+        if not _is_stable_json_number(self.frame_rate) or self.frame_rate <= 0:
             raise ConfigurationError("frame_rate must be greater than zero")
         if not isinstance(self.timestamp_unit, str) or self.timestamp_unit not in {
             "seconds",
@@ -73,30 +72,13 @@ class SelectionConfig:
     keep_endpoints: bool = True
 
     def validate(self) -> None:
-        if isinstance(self.budget, bool) or not isinstance(self.budget, int) or self.budget < 1:
-            raise ConfigurationError("budget must be at least one")
-        if (
-            isinstance(self.min_gap, bool)
-            or not isinstance(self.min_gap, (int, float))
-            or not _is_finite_number(self.min_gap)
-            or self.min_gap < 0
-        ):
+        _require_int64(self.budget, "budget", minimum=1)
+        if not _is_stable_json_number(self.min_gap) or self.min_gap < 0:
             raise ConfigurationError("min_gap cannot be negative")
-        if (
-            isinstance(self.duplicate_threshold, bool)
-            or not isinstance(self.duplicate_threshold, (int, float))
-            or not _is_finite_number(self.duplicate_threshold)
-            or not 0 <= self.duplicate_threshold <= 1
-        ):
+        if not _is_stable_json_number(self.duplicate_threshold) or not 0 <= self.duplicate_threshold <= 1:
             raise ConfigurationError("duplicate_threshold must be between zero and one")
         weights = (self.quality_weight, self.change_weight, self.coverage_weight)
-        if any(
-            isinstance(weight, bool)
-            or not isinstance(weight, (int, float))
-            or not _is_finite_number(weight)
-            or weight < 0
-            for weight in weights
-        ):
+        if any(not _is_stable_json_number(weight) or weight < 0 for weight in weights):
             raise ConfigurationError("selection weights cannot be negative")
         weight_sum = sum(weights)
         if not _is_finite_number(weight_sum) or weight_sum <= 0:
@@ -118,7 +100,29 @@ class FrameMetrics:
     mean_green: float
     mean_blue: float
 
+    def validate(self) -> None:
+        """Reject values outside the stable metrics contract."""
+
+        _require_bounded_integer(
+            self.perceptual_hash,
+            "perceptual hash",
+            minimum=0,
+            maximum=_MAX_UNSIGNED_64,
+        )
+        normalized = (
+            self.luminance,
+            self.entropy,
+            self.sharpness,
+            self.colorfulness,
+            self.mean_red,
+            self.mean_green,
+            self.mean_blue,
+        )
+        if any(not _is_finite_number(value) or not 0 <= value <= 1 for value in normalized):
+            raise ConfigurationError("frame metrics must be finite values between zero and one")
+
     def serializable(self) -> dict[str, float | str]:
+        self.validate()
         values: dict[str, float | str] = asdict(self)
         values["perceptual_hash"] = f"{self.perceptual_hash:016x}"
         return values
@@ -137,14 +141,35 @@ class Frame:
     byte_size: int
     metrics: FrameMetrics
 
+    def validate(self) -> None:
+        """Validate a directly constructed frame before it enters an operation."""
+
+        _require_int64(self.index, "frame index")
+        if not isinstance(self.path, Path):
+            raise ConfigurationError("frame path must be a pathlib.Path")
+        _require_safe_text(self.relative_path, "frame relative path")
+        if self.timestamp is not None and not _is_stable_json_number(self.timestamp):
+            raise ConfigurationError("frame timestamp must be a finite number or null")
+        _require_int64(self.width, "frame width", minimum=1)
+        _require_int64(self.height, "frame height", minimum=1)
+        _require_int64(self.byte_size, "frame byte size")
+        if not isinstance(self.metrics, FrameMetrics):
+            raise ConfigurationError("frame metrics must be FrameMetrics")
+        self.metrics.validate()
+
     @property
-    def time_coordinate(self) -> float:
+    def time_coordinate(self) -> float | int:
         """Return timestamp when present, otherwise the stable sequence index."""
 
-        return self.timestamp if self.timestamp is not None else float(self.index)
+        if self.timestamp is not None:
+            if not _is_stable_json_number(self.timestamp):
+                raise ConfigurationError("frame timestamp must be a finite number or null")
+            return float(self.timestamp)
+        _require_int64(self.index, "frame index")
+        return self.index
 
     def serializable(self) -> dict[str, Any]:
-        _require_safe_text(self.relative_path, "frame relative path")
+        self.validate()
         return {
             "index": self.index,
             "path": self.relative_path,
@@ -165,7 +190,14 @@ class ScoreBreakdown:
     coverage: float = 0.0
     utility: float = 0.0
 
+    def validate(self) -> None:
+        """Ensure every published normalized score is finite and bounded."""
+
+        if any(not _is_finite_number(value) or not 0 <= value <= 1 for value in asdict(self).values()):
+            raise ConfigurationError("decision scores must be finite values between zero and one")
+
     def serializable(self) -> dict[str, float]:
+        self.validate()
         return {key: round(value, 6) for key, value in asdict(self).items()}
 
 
@@ -182,7 +214,29 @@ class FrameDecision:
     nearest_selected_index: int | None = None
     scores: ScoreBreakdown = field(default_factory=ScoreBreakdown)
 
+    def validate(self) -> None:
+        """Validate a decision created outside the selector."""
+
+        _require_int64(self.index, "decision frame index")
+        _require_safe_text(self.path, "decision path")
+        if not isinstance(self.selected, bool):
+            raise ConfigurationError("decision selected must be a boolean")
+        if self.rank is not None:
+            _require_int64(self.rank, "decision rank", minimum=1)
+        if self.selected != (self.rank is not None):
+            raise ConfigurationError(
+                "selected decisions require a rank and rejected decisions must not have one"
+            )
+        _require_safe_text(self.reason_code, "decision reason code")
+        _require_safe_text(self.reason, "decision reason")
+        if self.nearest_selected_index is not None:
+            _require_int64(self.nearest_selected_index, "nearest selected frame index")
+        if not isinstance(self.scores, ScoreBreakdown):
+            raise ConfigurationError("decision scores must be ScoreBreakdown")
+        self.scores.validate()
+
     def serializable(self) -> dict[str, Any]:
+        self.validate()
         data = asdict(self)
         data["scores"] = self.scores.serializable()
         return data
@@ -197,12 +251,71 @@ class SelectionResult:
     decisions: tuple[FrameDecision, ...]
     config: SelectionConfig
 
+    def validate(self) -> None:
+        """Validate cross-record invariants for directly constructed results."""
+
+        if not isinstance(self.config, SelectionConfig):
+            raise ConfigurationError("result config must be SelectionConfig")
+        self.config.validate()
+
+        if not isinstance(self.frames, tuple) or any(not isinstance(frame, Frame) for frame in self.frames):
+            raise ConfigurationError("result frames must be a tuple of Frame objects")
+        for frame in self.frames:
+            frame.validate()
+        frame_indices = tuple(frame.index for frame in self.frames)
+        if len(frame_indices) != len(set(frame_indices)):
+            raise ConfigurationError("result frame indices must be unique")
+        if frame_indices != tuple(sorted(frame_indices)):
+            raise ConfigurationError("result frames must be ordered by index")
+
+        if not isinstance(self.selected_indices, tuple):
+            raise ConfigurationError("selected indices must be a tuple")
+        for index in self.selected_indices:
+            _require_int64(index, "selected frame index")
+        if len(self.selected_indices) != len(set(self.selected_indices)):
+            raise ConfigurationError("selected frame indices must be unique")
+        if self.selected_indices != tuple(sorted(self.selected_indices)):
+            raise ConfigurationError("selected frame indices must be ordered")
+        if not set(self.selected_indices).issubset(frame_indices):
+            raise ConfigurationError("selected frame indices must reference result frames")
+        if len(self.selected_indices) > self.config.budget:
+            raise ConfigurationError("selected frame count must not exceed the selection budget")
+
+        if not isinstance(self.decisions, tuple) or any(
+            not isinstance(decision, FrameDecision) for decision in self.decisions
+        ):
+            raise ConfigurationError("result decisions must be a tuple of FrameDecision objects")
+        for decision in self.decisions:
+            decision.validate()
+        decision_indices = tuple(decision.index for decision in self.decisions)
+        if decision_indices != frame_indices:
+            raise ConfigurationError("result decisions must correspond to frames in index order")
+        if any(
+            decision.path != frame.relative_path
+            for frame, decision in zip(self.frames, self.decisions, strict=True)
+        ):
+            raise ConfigurationError("decision paths must match their corresponding frame paths")
+        selected = set(self.selected_indices)
+        if any(decision.selected != (decision.index in selected) for decision in self.decisions):
+            raise ConfigurationError("decision selected states must match selected frame indices")
+        ranks = sorted(decision.rank for decision in self.decisions if decision.rank is not None)
+        if ranks != list(range(1, len(selected) + 1)):
+            raise ConfigurationError("selected decision ranks must be unique and contiguous")
+        if any(
+            decision.nearest_selected_index is not None and decision.nearest_selected_index not in selected
+            for decision in self.decisions
+        ):
+            raise ConfigurationError("nearest selected indices must reference selected frames")
+
     @property
     def selected_frames(self) -> tuple[Frame, ...]:
+        self.validate()
         selected = set(self.selected_indices)
         return tuple(frame for frame in self.frames if frame.index in selected)
 
     def decision_for(self, index: int) -> FrameDecision:
+        self.validate()
+        _require_int64(index, "decision lookup index")
         for decision in self.decisions:
             if decision.index == index:
                 return decision
@@ -232,3 +345,20 @@ def _is_finite_number(value: object) -> bool:
         return not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value)
     except (OverflowError, TypeError, ValueError):
         return False
+
+
+def _is_stable_json_number(value: object) -> bool:
+    """Accept finite floats and signed-64 integer spellings for continuous values."""
+
+    if not _is_finite_number(value):
+        return False
+    return not isinstance(value, int) or _MIN_SIGNED_64 <= value <= _MAX_SIGNED_64
+
+
+def _require_int64(value: object, label: str, *, minimum: int = 0) -> None:
+    _require_bounded_integer(value, label, minimum=minimum, maximum=_MAX_SIGNED_64)
+
+
+def _require_bounded_integer(value: object, label: str, *, minimum: int, maximum: int) -> None:
+    if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
+        raise ConfigurationError(f"{label} must be an integer between {minimum} and {maximum}")
