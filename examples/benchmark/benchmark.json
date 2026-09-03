@@ -1,0 +1,410 @@
+{
+  "schema_version": "1.1",
+  "kind": "frame-quorum-benchmark",
+  "protocol": {
+    "protocol_id": "frame-quorum-label-free-v1",
+    "frame_count": 18,
+    "measured_record_fingerprint": "sha256:748f2c8d27127ee378df514e79976f016b36f73aaa9854bfa5168036489af828",
+    "measured_record_fingerprint_algorithm": "SHA-256 over canonical paths, timestamps, dimensions, byte counts, and lossy image metrics",
+    "provenance": {
+      "software": {
+        "frame_quorum": "0.1.0",
+        "python": "3.11.2",
+        "pillow": "12.3.0"
+      },
+      "scan_config": {
+        "recursive": false,
+        "timestamp_mode": "index",
+        "frame_rate": 1.0,
+        "timestamp_regex": null,
+        "timestamp_unit": "seconds",
+        "extensions": [
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".webp",
+          ".bmp",
+          ".tif",
+          ".tiff"
+        ]
+      },
+      "source_content_digest": "sha256:888a927a50d0e541a5d87badda12bb8a416eab9292a4203bd83d092b627cd092",
+      "source_content_digest_algorithm": "SHA-256 over length-prefixed relative paths and each source file's SHA-256 digest",
+      "source_file_count": 18
+    },
+    "methods": [
+      "frame_quorum",
+      "time_uniform",
+      "change_peaks",
+      "seeded_random"
+    ],
+    "shared_constraints": [
+      "budget",
+      "min_gap",
+      "duplicate_threshold",
+      "keep_endpoints"
+    ],
+    "selection_config": {
+      "budget": 6,
+      "min_gap": 0.0,
+      "duplicate_threshold": 0.035,
+      "quality_weight": 0.32,
+      "change_weight": 0.38,
+      "coverage_weight": 0.3,
+      "keep_endpoints": true
+    },
+    "benchmark_config": {
+      "random_seed": 1729,
+      "random_trials": 8
+    },
+    "estimated_comparison_work_units": 16272,
+    "comparison_work_unit_limit": 100000000,
+    "metrics": {
+      "mean_quality": "Mean intrinsic quality of selected frames; higher is better.",
+      "content_coverage": "Mean similarity to the nearest selected frame; higher is better.",
+      "temporal_coverage": "Mean normalized proximity to a selected time; higher is better.",
+      "change_coverage": "Change-weighted proximity of transitions to selections; higher is better.",
+      "non_redundancy": "Mean pairwise selected-frame content distance; higher is better.",
+      "balanced_score": "Unweighted mean of the five diagnostics; not semantic accuracy."
+    }
+  },
+  "runs": [
+    {
+      "method": "frame_quorum",
+      "trial": 0,
+      "seed": null,
+      "selected_indices": [
+        0,
+        5,
+        7,
+        10,
+        15,
+        17
+      ],
+      "selected_count": 6,
+      "metrics": {
+        "mean_quality": 0.34802,
+        "content_coverage": 0.885577,
+        "temporal_coverage": 0.947712,
+        "change_coverage": 0.951078,
+        "non_redundancy": 0.199539,
+        "balanced_score": 0.666385
+      }
+    },
+    {
+      "method": "time_uniform",
+      "trial": 0,
+      "seed": null,
+      "selected_indices": [
+        0,
+        3,
+        7,
+        10,
+        14,
+        17
+      ],
+      "selected_count": 6,
+      "metrics": {
+        "mean_quality": 0.319665,
+        "content_coverage": 0.905162,
+        "temporal_coverage": 0.954248,
+        "change_coverage": 0.949312,
+        "non_redundancy": 0.286007,
+        "balanced_score": 0.682879
+      }
+    },
+    {
+      "method": "change_peaks",
+      "trial": 0,
+      "seed": null,
+      "selected_indices": [
+        0,
+        2,
+        5,
+        10,
+        15,
+        17
+      ],
+      "selected_count": 6,
+      "metrics": {
+        "mean_quality": 0.335349,
+        "content_coverage": 0.891409,
+        "temporal_coverage": 0.947712,
+        "change_coverage": 0.952997,
+        "non_redundancy": 0.226564,
+        "balanced_score": 0.670806
+      }
+    },
+    {
+      "method": "seeded_random",
+      "trial": 0,
+      "seed": 1729,
+      "selected_indices": [
+        0,
+        8,
+        10,
+        12,
+        15,
+        17
+      ],
+      "selected_count": 6,
+      "metrics": {
+        "mean_quality": 0.356558,
+        "content_coverage": 0.890314,
+        "temporal_coverage": 0.931373,
+        "change_coverage": 0.921093,
+        "non_redundancy": 0.221074,
+        "balanced_score": 0.664082
+      }
+    },
+    {
+      "method": "seeded_random",
+      "trial": 1,
+      "seed": 1730,
+      "selected_indices": [
+        0,
+        4,
+        7,
+        15,
+        16,
+        17
+      ],
+      "selected_count": 6,
+      "metrics": {
+        "mean_quality": 0.34892,
+        "content_coverage": 0.89906,
+        "temporal_coverage": 0.928105,
+        "change_coverage": 0.924713,
+        "non_redundancy": 0.278696,
+        "balanced_score": 0.675899
+      }
+    },
+    {
+      "method": "seeded_random",
+      "trial": 2,
+      "seed": 1731,
+      "selected_indices": [
+        0,
+        1,
+        7,
+        12,
+        15,
+        17
+      ],
+      "selected_count": 6,
+      "metrics": {
+        "mean_quality": 0.335528,
+        "content_coverage": 0.897682,
+        "temporal_coverage": 0.941176,
+        "change_coverage": 0.931824,
+        "non_redundancy": 0.268545,
+        "balanced_score": 0.674951
+      }
+    },
+    {
+      "method": "seeded_random",
+      "trial": 3,
+      "seed": 1732,
+      "selected_indices": [
+        0,
+        7,
+        8,
+        11,
+        15,
+        17
+      ],
+      "selected_count": 6,
+      "metrics": {
+        "mean_quality": 0.348318,
+        "content_coverage": 0.906367,
+        "temporal_coverage": 0.937908,
+        "change_coverage": 0.929339,
+        "non_redundancy": 0.250996,
+        "balanced_score": 0.674586
+      }
+    },
+    {
+      "method": "seeded_random",
+      "trial": 4,
+      "seed": 1733,
+      "selected_indices": [
+        0,
+        1,
+        10,
+        13,
+        14,
+        17
+      ],
+      "selected_count": 6,
+      "metrics": {
+        "mean_quality": 0.326188,
+        "content_coverage": 0.899893,
+        "temporal_coverage": 0.921569,
+        "change_coverage": 0.907693,
+        "non_redundancy": 0.279932,
+        "balanced_score": 0.667055
+      }
+    },
+    {
+      "method": "seeded_random",
+      "trial": 5,
+      "seed": 1734,
+      "selected_indices": [
+        0,
+        1,
+        2,
+        7,
+        15,
+        17
+      ],
+      "selected_count": 6,
+      "metrics": {
+        "mean_quality": 0.314413,
+        "content_coverage": 0.896059,
+        "temporal_coverage": 0.924837,
+        "change_coverage": 0.920817,
+        "non_redundancy": 0.269208,
+        "balanced_score": 0.665067
+      }
+    },
+    {
+      "method": "seeded_random",
+      "trial": 6,
+      "seed": 1735,
+      "selected_indices": [
+        0,
+        4,
+        9,
+        12,
+        16,
+        17
+      ],
+      "selected_count": 6,
+      "metrics": {
+        "mean_quality": 0.335757,
+        "content_coverage": 0.899547,
+        "temporal_coverage": 0.947712,
+        "change_coverage": 0.942217,
+        "non_redundancy": 0.284116,
+        "balanced_score": 0.68187
+      }
+    },
+    {
+      "method": "seeded_random",
+      "trial": 7,
+      "seed": 1736,
+      "selected_indices": [
+        0,
+        4,
+        7,
+        8,
+        11,
+        17
+      ],
+      "selected_count": 6,
+      "metrics": {
+        "mean_quality": 0.313979,
+        "content_coverage": 0.914625,
+        "temporal_coverage": 0.944444,
+        "change_coverage": 0.940498,
+        "non_redundancy": 0.296292,
+        "balanced_score": 0.681968
+      }
+    }
+  ],
+  "aggregates": [
+    {
+      "method": "frame_quorum",
+      "trial_count": 1,
+      "selected_count_mean": 6.0,
+      "selected_count_population_stddev": 0.0,
+      "metrics_mean": {
+        "mean_quality": 0.34802,
+        "content_coverage": 0.885577,
+        "temporal_coverage": 0.947712,
+        "change_coverage": 0.951078,
+        "non_redundancy": 0.199539,
+        "balanced_score": 0.666385
+      },
+      "metrics_population_stddev": {
+        "mean_quality": 0.0,
+        "content_coverage": 0.0,
+        "temporal_coverage": 0.0,
+        "change_coverage": 0.0,
+        "non_redundancy": 0.0,
+        "balanced_score": 0.0
+      }
+    },
+    {
+      "method": "time_uniform",
+      "trial_count": 1,
+      "selected_count_mean": 6.0,
+      "selected_count_population_stddev": 0.0,
+      "metrics_mean": {
+        "mean_quality": 0.319665,
+        "content_coverage": 0.905162,
+        "temporal_coverage": 0.954248,
+        "change_coverage": 0.949312,
+        "non_redundancy": 0.286007,
+        "balanced_score": 0.682879
+      },
+      "metrics_population_stddev": {
+        "mean_quality": 0.0,
+        "content_coverage": 0.0,
+        "temporal_coverage": 0.0,
+        "change_coverage": 0.0,
+        "non_redundancy": 0.0,
+        "balanced_score": 0.0
+      }
+    },
+    {
+      "method": "change_peaks",
+      "trial_count": 1,
+      "selected_count_mean": 6.0,
+      "selected_count_population_stddev": 0.0,
+      "metrics_mean": {
+        "mean_quality": 0.335349,
+        "content_coverage": 0.891409,
+        "temporal_coverage": 0.947712,
+        "change_coverage": 0.952997,
+        "non_redundancy": 0.226564,
+        "balanced_score": 0.670806
+      },
+      "metrics_population_stddev": {
+        "mean_quality": 0.0,
+        "content_coverage": 0.0,
+        "temporal_coverage": 0.0,
+        "change_coverage": 0.0,
+        "non_redundancy": 0.0,
+        "balanced_score": 0.0
+      }
+    },
+    {
+      "method": "seeded_random",
+      "trial_count": 8,
+      "selected_count_mean": 6.0,
+      "selected_count_population_stddev": 0.0,
+      "metrics_mean": {
+        "mean_quality": 0.334958,
+        "content_coverage": 0.900443,
+        "temporal_coverage": 0.934641,
+        "change_coverage": 0.927274,
+        "non_redundancy": 0.268607,
+        "balanced_score": 0.673185
+      },
+      "metrics_population_stddev": {
+        "mean_quality": 0.014917,
+        "content_coverage": 0.006789,
+        "temporal_coverage": 0.00895,
+        "change_coverage": 0.010565,
+        "non_redundancy": 0.021814,
+        "balanced_score": 0.006627
+      }
+    }
+  ],
+  "limitations": [
+    "Metrics are label-free diagnostics and do not measure semantic event recall.",
+    "The bundled synthetic sequence is a reproducibility fixture, not an external benchmark.",
+    "Random results describe only the declared deterministic seed range."
+  ]
+}

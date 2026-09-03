@@ -9,6 +9,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TextIO
 
+from ._version import VERSION
+from .benchmark import (
+    BenchmarkConfig,
+    benchmark_manifest,
+    render_benchmark_svg,
+    run_benchmark,
+    source_content_digest,
+)
 from .contact_sheet import render_contact_sheet
 from .demo import create_demo_sequence
 from .errors import ConfigurationError, FrameQuorumError, OutputError
@@ -16,6 +24,7 @@ from .models import Frame, ScanConfig, SelectionConfig
 from .reporting import scan_manifest, selection_manifest, write_json
 from .scanner import scan_frames
 from .selector import select_frames
+from .video import VideoExtractionConfig, extract_video_frames
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -23,7 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="frame-quorum",
         description="Explainable, content-aware key-frame selection for image sequences.",
     )
-    parser.add_argument("--version", action="version", version="%(prog)s 0.1.0")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     commands = parser.add_subparsers(dest="command", required=True)
 
     scan = commands.add_parser("scan", help="measure a frame directory and emit JSON")
@@ -41,6 +50,17 @@ def build_parser() -> argparse.ArgumentParser:
     select.add_argument("--thumbnail-width", type=int, default=320)
     select.set_defaults(handler=_handle_select)
 
+    benchmark = commands.add_parser(
+        "benchmark", help="compare selection against reproducible transparent baselines"
+    )
+    benchmark.add_argument("input", type=Path)
+    _add_scan_options(benchmark)
+    _add_selection_options(benchmark)
+    benchmark.add_argument("--output-dir", "-o", type=Path, required=True)
+    benchmark.add_argument("--random-seed", type=int, default=1729)
+    benchmark.add_argument("--random-trials", type=int, default=8)
+    benchmark.set_defaults(handler=_handle_benchmark)
+
     demo = commands.add_parser("demo", help="generate and process a synthetic sequence")
     demo.add_argument("--output-dir", "-o", type=Path, default=Path("frame-quorum-demo"))
     demo.add_argument("--force", action="store_true", help="replace the previously generated demo frames")
@@ -48,6 +68,23 @@ def build_parser() -> argparse.ArgumentParser:
     demo.add_argument("--columns", type=int, default=3)
     demo.add_argument("--thumbnail-width", type=int, default=320)
     demo.set_defaults(handler=_handle_demo)
+
+    extract = commands.add_parser("extract", help="extract a bounded image sequence with optional FFmpeg")
+    extract.add_argument("input", type=Path)
+    extract.add_argument("--output-dir", "-o", type=Path, required=True)
+    extract.add_argument("--frame-rate", type=float, default=2.0)
+    extract.add_argument("--max-frames", type=int, default=10_000)
+    extract.add_argument(
+        "--max-output-bytes",
+        type=int,
+        default=1_000_000_000,
+        help="maximum total generated PNG bytes; extraction.json is excluded",
+    )
+    extract.add_argument(
+        "--timeout", type=float, default=300.0, help="maximum FFmpeg subprocess runtime in seconds"
+    )
+    extract.add_argument("--ffmpeg", default="ffmpeg", help="FFmpeg executable name or path")
+    extract.set_defaults(handler=_handle_extract)
     return parser
 
 
@@ -131,6 +168,39 @@ def _handle_select(args: argparse.Namespace) -> int:
     )
 
 
+def _handle_benchmark(args: argparse.Namespace) -> int:
+    _require_output_outside_input(args.input, args.output_dir)
+    scan_config = _scan_config(args)
+    selection_config = _selection_config(args)
+    benchmark_config = BenchmarkConfig(
+        random_seed=args.random_seed,
+        random_trials=args.random_trials,
+    )
+    frames = scan_frames(args.input, scan_config)
+    result = run_benchmark(
+        frames,
+        selection_config,
+        benchmark_config,
+        scan_config=scan_config,
+        source_digest=source_content_digest(frames),
+    )
+    output_dir = args.output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    report = output_dir / "benchmark.json"
+    chart = output_dir / "benchmark.svg"
+    with TemporaryDirectory(prefix=".frame-quorum-benchmark-stage-", dir=output_dir) as staging:
+        staging_dir = Path(staging)
+        staged_report = staging_dir / report.name
+        staged_chart = staging_dir / chart.name
+        write_json(benchmark_manifest(result), staged_report)
+        render_benchmark_svg(result, staged_chart)
+        _commit_bundle(((staged_chart, chart), (staged_report, report)))
+    _write_console(f"Benchmarked {len(frames)} frames across {len(result.runs)} runs")
+    _write_console(f"Report: {report}")
+    _write_console(f"Chart: {chart}")
+    return 0
+
+
 def _handle_demo(args: argparse.Namespace) -> int:
     output = args.output_dir.resolve()
     frames_dir = create_demo_sequence(output / "frames", overwrite=args.force)
@@ -150,6 +220,22 @@ def _handle_demo(args: argparse.Namespace) -> int:
     )
     _write_console(f"Demo frames: {frames_dir}")
     return status
+
+
+def _handle_extract(args: argparse.Namespace) -> int:
+    result = extract_video_frames(
+        args.input,
+        args.output_dir,
+        VideoExtractionConfig(
+            frame_rate=args.frame_rate,
+            max_frames=args.max_frames,
+            max_output_bytes=args.max_output_bytes,
+            timeout_seconds=args.timeout,
+            executable=args.ffmpeg,
+        ),
+    )
+    _write_console(f"Extracted {result.frame_count} frames -> {result.output_dir}")
+    return 0
 
 
 def _write_selection(
@@ -219,8 +305,14 @@ def _commit_bundle(files: tuple[tuple[Path, Path], ...]) -> None:
 
 
 def _require_output_outside_input(input_path: Path, output_dir: Path) -> None:
-    resolved_input = input_path.expanduser().resolve()
-    resolved_output = output_dir.expanduser().resolve()
+    supplied_input = input_path.expanduser()
+    supplied_output = output_dir.expanduser()
+    if supplied_input.is_symlink():
+        raise ConfigurationError(f"input path must not be a symbolic link: {supplied_input}")
+    if supplied_output.is_symlink():
+        raise ConfigurationError(f"output directory must not be a symbolic link: {supplied_output}")
+    resolved_input = supplied_input.resolve()
+    resolved_output = supplied_output.resolve()
     if resolved_input.is_dir() and (
         resolved_output == resolved_input or resolved_input in resolved_output.parents
     ):

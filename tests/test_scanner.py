@@ -189,3 +189,39 @@ def test_disappearing_file_is_reported_as_scan_error(
     monkeypatch.setattr(scanner_module, "timestamp_for", remove_before_stat)
     with pytest.raises(ScanError, match="cannot inspect image"):
         scan_frames(path)
+
+
+def test_scan_rejects_supplied_symlink_before_resolution_on_every_platform(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    supplied = tmp_path / "raw-link.png"
+    original = Path.is_symlink
+
+    def mark_supplied(path: Path) -> bool:
+        return path == supplied or original(path)
+
+    monkeypatch.setattr(Path, "is_symlink", mark_supplied)
+    with pytest.raises(ScanError, match="symbolic-link input"):
+        scan_frames(supplied)
+
+
+def test_scan_rejects_dangling_and_nested_image_symlinks(tmp_path: Path) -> None:
+    dangling = tmp_path / "dangling.png"
+    try:
+        dangling.symlink_to(tmp_path / "missing.png")
+    except OSError as error:
+        pytest.skip(f"file symlinks are unavailable: {error}")
+    with pytest.raises(ScanError, match="symbolic-link input"):
+        scan_frames(dangling)
+
+    directory = tmp_path / "sequence"
+    directory.mkdir()
+    nested = directory / "nested.png"
+    nested.symlink_to(tmp_path / "missing-nested.png")
+    with pytest.raises(ScanError, match="symbolic-link image"):
+        scan_frames(directory)
+
+
+def test_scan_rejects_wrong_config_type(tmp_path: Path) -> None:
+    with pytest.raises(ConfigurationError, match="must be ScanConfig"):
+        scan_frames(tmp_path, object())  # type: ignore[arg-type]

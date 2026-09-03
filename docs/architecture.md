@@ -16,7 +16,8 @@ directory / image
  selector ── constraints ── score breakdowns ── decisions
        │
        ├──────────────► JSON manifest
-       └──────────────► contact sheet
+       ├──────────────► contact sheet
+       └──────────────► benchmark baselines ── JSON + SVG
 ```
 
 ## Modules
@@ -30,6 +31,9 @@ directory / image
   score fields.
 - `contact_sheet.py` is a presentation adapter. It does not participate in scoring.
 - `demo.py` generates deterministic synthetic data used for the public example.
+- `benchmark.py` owns transparent baselines, label-free metrics, aggregation, raw-source and measured-record digests,
+  runtime/scan provenance, and SVG output.
+- `video.py` is an optional subprocess boundary for monitored FFmpeg extraction; FFmpeg is not imported or bundled.
 - `cli.py` maps commands and flags to the public Python API.
 
 ## Measurement model
@@ -94,5 +98,23 @@ Potential optional adapters should produce normalized measurements without chang
 access implicit. Examples include semantic embeddings, optical-flow change, or domain-specific quality signals.
 Any adapter must expose its provenance and parameters in the manifest so decisions remain reproducible.
 
-Video decoding is intentionally outside the core. A future adapter may emit an image sequence and timestamp rule;
-the scanner and selector then remain unchanged.
+Video decoding remains outside the core. The optional adapter emits an image sequence and timestamp rule so the
+scanner and selector remain unchanged. The FFmpeg adapter implements this boundary by staging a
+new PNG directory, enforcing frame, live generated-PNG byte, and FFmpeg subprocess-runtime caps, continuously draining
+bounded diagnostics, verifying the input snapshot before and after decoding, validating every output through the
+scanner, and publishing only a complete sequence. The subprocess timeout excludes hashing, version probing, and
+validation. The extraction manifest records the input SHA-256, decoder version, effective arguments, limits,
+byte-accounting scope, and result; codec-specific behavior remains external.
+
+## Evaluation boundary
+
+The reproducible benchmark reuses production record validation and hard constraints, then changes only candidate
+ordering. Time-uniform sampling uses actual frame time coordinates, change peaks test local visual-transition
+preference, and a
+portable hash-ranked random baseline estimates a declared seed distribution. Reports contain every trial as well as
+means and population standard deviations; they never select a best random trial.
+
+Metrics intentionally require no labels. They quantify intrinsic quality, nearest-selected content and temporal
+coverage, transition proximity, and selected-set non-redundancy. They cannot determine whether a selected image is a
+human-important event or improves a downstream VLM. External annotated datasets belong above this layer and must
+publish their label protocol, license, splits, and decoder provenance.

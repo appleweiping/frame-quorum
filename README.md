@@ -41,6 +41,22 @@ Recreate the repository's checked-in example exactly with:
 python examples/create_demo.py
 ```
 
+## Reproducible benchmark
+
+Compare the production selector with temporal-uniform, change-peak, and deterministic seeded-random baselines under
+the same budget, spacing, duplicate, and endpoint constraints:
+
+```bash
+frame-quorum benchmark ./frames --output-dir ./experiment --budget 8 --random-trials 32
+```
+
+The command writes a machine-readable `benchmark.json` and an SVG comparison chart. The repository includes an
+exactly reproducible [benchmark report](examples/benchmark/benchmark.json),
+[visual result](examples/benchmark/benchmark.svg), metric definitions, baseline protocol, and honest evidence limits
+in [Reproducible experiments](docs/experiments.md). These label-free diagnostics measure representation and coverage;
+they do not measure downstream VLM understanding or semantic accuracy. Every seeded-random trial is retained and
+reported as a distribution instead of selecting the best trial.
+
 ## Commands
 
 ### Inspect an image sequence
@@ -83,6 +99,22 @@ frame-quorum select ./frames --output-dir ./selection \
 
 The regex may contain a named `ts` group or use its first capture group. Other policies are `mtime` and
 `none`. A filename mismatch is an error rather than a silently invented timestamp.
+
+### Optional video extraction
+
+If FFmpeg is installed, create a bounded, validated image sequence without adding a Python dependency:
+
+```bash
+frame-quorum extract input.mp4 --output-dir ./frames --frame-rate 2 --max-frames 10000 \
+  --max-output-bytes 1000000000 --timeout 300
+```
+
+Extraction never invokes a shell, refuses symbolic-link inputs and outputs or an existing destination, monitors
+generated PNG bytes while FFmpeg is running, enforces the frame and PNG-byte limits, validates all PNGs, and publishes
+the directory atomically. `--timeout` limits the FFmpeg subprocess runtime; it does not include input hashing, version
+probing, or post-decode validation. The manifest records the verified input SHA-256, actual FFmpeg version and
+arguments, limits, and result. `max_output_bytes` and `total_output_bytes` count generated PNGs only and exclude the
+small `extraction.json` record.
 
 ## How selection works
 
@@ -154,6 +186,9 @@ python -m pytest --cov
 Tests synthesize their own images and make no network requests. CI runs the full suite on Linux with Python 3.11
 through 3.14, plus Windows with Python 3.12. The coverage floor is 94% with branch coverage enabled.
 
+For regression research, regenerate the checked-in benchmark and run the machine-readable selection-only performance
+protocol documented in [benchmarks/README.md](benchmarks/README.md).
+
 ## Limitations
 
 - A perceptual change is not necessarily an important event; the tool does not recognize people or objects.
@@ -166,6 +201,11 @@ through 3.14, plus Windows with Python 3.12. The coverage floor is 94% with bran
   dimensions, size, or measured content changed after scanning.
 - Filename timestamp regular expressions are caller-supplied Python regular expressions; do not accept an
   arbitrary pattern from an untrusted tenant without an external execution timeout.
+- The included benchmark uses label-free diagnostics on a synthetic fixture. It cannot establish semantic event
+  detection, downstream VLM accuracy, or generalization to real video domains.
+- Optional FFmpeg extraction is bounded by frame count, live generated-PNG bytes, and FFmpeg subprocess runtime.
+  Input hashing, version probing, and post-decode validation are outside that subprocess timeout. Codec behavior,
+  seeking, memory, and CPU use still depend on the separately installed FFmpeg build and OS sandbox.
 
 These boundaries are deliberate: the baseline stays inspectable, offline, and inexpensive. Semantic embeddings
 can be added later behind an optional adapter without changing the manifest's decision model.

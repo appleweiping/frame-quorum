@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1151" viewBox="0 0 1120 1151" role="img" aria-labelledby="title desc">
+<title id="title">Frame Quorum reproducible benchmark</title>
+<desc id="desc">Label-free aggregate scores for four key-frame selection methods.</desc>
+<rect width="100%" height="100%" fill="#101722"/>
+<text x="48" y="48" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="700">Reproducible selector comparison</text>
+<text x="48" y="76" fill="#9fb2c8" font-family="sans-serif" font-size="14">Higher is better · synthetic fixture · label-free diagnostics, not semantic accuracy</text>
+<text x="48" y="125" fill="#ffffff" font-family="monospace" font-size="17" font-weight="700">frame quorum</text>
+<text x="233" y="127" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">mean quality</text>
+<rect x="245" y="110" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="110" width="264.5" height="22" rx="4" fill="#58d6a9"/>
+<text x="1019" y="127" fill="#ffffff" font-family="monospace" font-size="13">0.348</text>
+<text x="233" y="163" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">content coverage</text>
+<rect x="245" y="146" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="146" width="673.04" height="22" rx="4" fill="#55a8ff"/>
+<text x="1019" y="163" fill="#ffffff" font-family="monospace" font-size="13">0.886</text>
+<text x="233" y="199" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">temporal coverage</text>
+<rect x="245" y="182" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="182" width="720.26" height="22" rx="4" fill="#f2cf57"/>
+<text x="1019" y="199" fill="#ffffff" font-family="monospace" font-size="13">0.948</text>
+<text x="233" y="235" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">change coverage</text>
+<rect x="245" y="218" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="218" width="722.82" height="22" rx="4" fill="#f58b62"/>
+<text x="1019" y="235" fill="#ffffff" font-family="monospace" font-size="13">0.951</text>
+<text x="233" y="271" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">non redundancy</text>
+<rect x="245" y="254" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="254" width="151.65" height="22" rx="4" fill="#bb87f7"/>
+<text x="1019" y="271" fill="#ffffff" font-family="monospace" font-size="13">0.200</text>
+<text x="233" y="307" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">balanced score</text>
+<rect x="245" y="290" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="290" width="506.45" height="22" rx="4" fill="#f3f6fb"/>
+<text x="1019" y="307" fill="#ffffff" font-family="monospace" font-size="13">0.666</text>
+<text x="48" y="369" fill="#ffffff" font-family="monospace" font-size="17" font-weight="700">time uniform</text>
+<text x="233" y="371" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">mean quality</text>
+<rect x="245" y="354" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="354" width="242.95" height="22" rx="4" fill="#58d6a9"/>
+<text x="1019" y="371" fill="#ffffff" font-family="monospace" font-size="13">0.320</text>
+<text x="233" y="407" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">content coverage</text>
+<rect x="245" y="390" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="390" width="687.92" height="22" rx="4" fill="#55a8ff"/>
+<text x="1019" y="407" fill="#ffffff" font-family="monospace" font-size="13">0.905</text>
+<text x="233" y="443" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">temporal coverage</text>
+<rect x="245" y="426" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="426" width="725.23" height="22" rx="4" fill="#f2cf57"/>
+<text x="1019" y="443" fill="#ffffff" font-family="monospace" font-size="13">0.954</text>
+<text x="233" y="479" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">change coverage</text>
+<rect x="245" y="462" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="462" width="721.48" height="22" rx="4" fill="#f58b62"/>
+<text x="1019" y="479" fill="#ffffff" font-family="monospace" font-size="13">0.949</text>
+<text x="233" y="515" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">non redundancy</text>
+<rect x="245" y="498" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="498" width="217.37" height="22" rx="4" fill="#bb87f7"/>
+<text x="1019" y="515" fill="#ffffff" font-family="monospace" font-size="13">0.286</text>
+<text x="233" y="551" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">balanced score</text>
+<rect x="245" y="534" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="534" width="518.99" height="22" rx="4" fill="#f3f6fb"/>
+<text x="1019" y="551" fill="#ffffff" font-family="monospace" font-size="13">0.683</text>
+<text x="48" y="613" fill="#ffffff" font-family="monospace" font-size="17" font-weight="700">change peaks</text>
+<text x="233" y="615" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">mean quality</text>
+<rect x="245" y="598" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="598" width="254.87" height="22" rx="4" fill="#58d6a9"/>
+<text x="1019" y="615" fill="#ffffff" font-family="monospace" font-size="13">0.335</text>
+<text x="233" y="651" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">content coverage</text>
+<rect x="245" y="634" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="634" width="677.47" height="22" rx="4" fill="#55a8ff"/>
+<text x="1019" y="651" fill="#ffffff" font-family="monospace" font-size="13">0.891</text>
+<text x="233" y="687" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">temporal coverage</text>
+<rect x="245" y="670" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="670" width="720.26" height="22" rx="4" fill="#f2cf57"/>
+<text x="1019" y="687" fill="#ffffff" font-family="monospace" font-size="13">0.948</text>
+<text x="233" y="723" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">change coverage</text>
+<rect x="245" y="706" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="706" width="724.28" height="22" rx="4" fill="#f58b62"/>
+<text x="1019" y="723" fill="#ffffff" font-family="monospace" font-size="13">0.953</text>
+<text x="233" y="759" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">non redundancy</text>
+<rect x="245" y="742" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="742" width="172.19" height="22" rx="4" fill="#bb87f7"/>
+<text x="1019" y="759" fill="#ffffff" font-family="monospace" font-size="13">0.227</text>
+<text x="233" y="795" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">balanced score</text>
+<rect x="245" y="778" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="778" width="509.81" height="22" rx="4" fill="#f3f6fb"/>
+<text x="1019" y="795" fill="#ffffff" font-family="monospace" font-size="13">0.671</text>
+<text x="48" y="857" fill="#ffffff" font-family="monospace" font-size="17" font-weight="700">seeded random</text>
+<text x="233" y="859" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">mean quality</text>
+<rect x="245" y="842" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="842" width="254.57" height="22" rx="4" fill="#58d6a9"/>
+<text x="1019" y="859" fill="#ffffff" font-family="monospace" font-size="13">0.335</text>
+<text x="233" y="895" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">content coverage</text>
+<rect x="245" y="878" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="878" width="684.34" height="22" rx="4" fill="#55a8ff"/>
+<text x="1019" y="895" fill="#ffffff" font-family="monospace" font-size="13">0.900</text>
+<text x="233" y="931" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">temporal coverage</text>
+<rect x="245" y="914" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="914" width="710.33" height="22" rx="4" fill="#f2cf57"/>
+<text x="1019" y="931" fill="#ffffff" font-family="monospace" font-size="13">0.935</text>
+<text x="233" y="967" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">change coverage</text>
+<rect x="245" y="950" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="950" width="704.73" height="22" rx="4" fill="#f58b62"/>
+<text x="1019" y="967" fill="#ffffff" font-family="monospace" font-size="13">0.927</text>
+<text x="233" y="1003" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">non redundancy</text>
+<rect x="245" y="986" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="986" width="204.14" height="22" rx="4" fill="#bb87f7"/>
+<text x="1019" y="1003" fill="#ffffff" font-family="monospace" font-size="13">0.269</text>
+<text x="233" y="1039" fill="#aebed0" font-family="sans-serif" font-size="13" text-anchor="end">balanced score</text>
+<rect x="245" y="1022" width="760" height="22" rx="4" fill="#1f2b3a"/>
+<rect x="245" y="1022" width="511.62" height="22" rx="4" fill="#f3f6fb"/>
+<text x="1019" y="1039" fill="#ffffff" font-family="monospace" font-size="13">0.673</text>
+<text x="48" y="1123" fill="#71859b" font-family="sans-serif" font-size="12">records sha256:748f2c8d2 · schema 1.1</text>
+</svg>

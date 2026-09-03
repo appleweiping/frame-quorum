@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from .errors import ScanError
+from .errors import ConfigurationError, ScanError
 from .metrics import measure_image
 from .models import Frame, ScanConfig
 from .timestamps import timestamp_for
@@ -19,9 +19,14 @@ _NATURAL_PARTS = re.compile(r"(\d+)")
 def scan_frames(input_path: str | Path, config: ScanConfig | None = None) -> tuple[Frame, ...]:
     """Scan one image or directory into a naturally ordered frame sequence."""
 
-    options = config or ScanConfig()
+    options = ScanConfig() if config is None else config
+    if not isinstance(options, ScanConfig):
+        raise ConfigurationError("scan config must be ScanConfig")
     options.validate()
-    root = Path(input_path).expanduser().resolve()
+    supplied = Path(input_path).expanduser()
+    if supplied.is_symlink():
+        raise ScanError(f"refusing to scan a symbolic-link input: {supplied}")
+    root = supplied.resolve()
     paths = discover_images(root, options)
     frames: list[Frame] = []
     for index, path in enumerate(paths):
@@ -32,6 +37,8 @@ def scan_frames(input_path: str | Path, config: ScanConfig | None = None) -> tup
 def discover_images(input_path: Path, config: ScanConfig) -> tuple[Path, ...]:
     """Return supported files in deterministic natural-name order."""
 
+    if input_path.is_symlink():
+        raise ScanError(f"refusing to scan a symbolic-link input: {input_path}")
     if not input_path.exists():
         raise ScanError(f"input path does not exist: {input_path}")
     allowed = {
@@ -43,7 +50,14 @@ def discover_images(input_path: Path, config: ScanConfig) -> tuple[Path, ...]:
             raise ScanError(f"unsupported image extension: {input_path.suffix or '<none>'}")
         return (input_path,)
     iterator = input_path.rglob("*") if config.recursive else input_path.iterdir()
-    images = [path for path in iterator if path.is_file() and path.suffix.lower() in allowed]
+    images = []
+    for path in iterator:
+        if path.suffix.lower() not in allowed:
+            continue
+        if path.is_symlink():
+            raise ScanError(f"refusing to scan a symbolic-link image: {path}")
+        if path.is_file():
+            images.append(path)
     images.sort(key=lambda path: _path_sort_key(path.relative_to(input_path).as_posix()))
     if not images:
         raise ScanError(f"no supported images found in {input_path}")

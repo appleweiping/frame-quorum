@@ -4,6 +4,17 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Added
+
+- Add a deterministic experiment runner comparing Frame Quorum with time-uniform, change-peak, and repeated seeded-random
+  baselines under shared hard constraints.
+- Add normalized quality, content coverage, temporal coverage, transition coverage, non-redundancy, and explicitly
+  non-semantic balanced metrics with machine-readable JSON and dependency-free SVG output.
+- Add a checked-in reproducibility fixture, selection-only performance protocol, research limitations, and quality and
+  runtime regression coverage.
+- Add an optional bounded FFmpeg adapter that stages, validates, and atomically publishes a new PNG sequence without
+  a shell or mandatory video dependency.
+
 ### Fixed
 
 - Validate identifier, count, dimension, and integer-valued continuous inputs against explicit signed or unsigned
@@ -13,6 +24,10 @@ All notable changes are documented here. The project follows semantic versioning
   conversion errors.
 - Reject directly constructed results whose selected count exceeds their budget or whose decision paths disagree
   with the corresponding frame paths.
+- Reject symbolic-link scan inputs and nested image links before resolution, including dangling links, and apply the
+  same raw-path rule to optional video extraction inputs and outputs.
+- Verify video input identity, size, modification time, and SHA-256 before and after FFmpeg decoding; extraction now
+  fails without publishing output when the input changes concurrently.
 
 ## [0.1.0] - 2026-08-31
 

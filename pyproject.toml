@@ -1,15 +1,17 @@
 [build-system]
-requires = ["hatchling>=1.25"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "frame-quorum"
-version = "0.1.0"
+version = "0.2.0"
 description = "Explainable, content-aware key-frame selection for image sequences"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { file = "LICENSE" }
-authors = [{ name = "Frame Quorum contributors" }]
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "appleweiping" }]
+maintainers = [{ name = "appleweiping" }]
 keywords = ["keyframes", "images", "computer-vision", "contact-sheet", "video-analysis"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -20,11 +22,12 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Topic :: Multimedia :: Graphics",
+  "Typing :: Typed",
 ]
 dependencies = ["Pillow>=10.3"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.2", "pytest-cov>=5.0", "ruff>=0.8"]
+dev = ["build>=1.2", "pytest>=8.2", "pytest-cov>=5.0", "ruff>=0.8", "twine>=7.0"]
 
 [project.scripts]
 frame-quorum = "frame_quorum.cli:main"
@@ -48,7 +51,7 @@ source = ["frame_quorum"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-fail_under = 94
+fail_under = 95
 
 [tool.ruff]
 target-version = "py311"

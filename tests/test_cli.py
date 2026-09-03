@@ -9,9 +9,18 @@ import pytest
 from PIL import Image
 
 import frame_quorum.cli as cli_module
+from frame_quorum import __version__
 from frame_quorum.cli import main
 from frame_quorum.demo import create_demo_sequence
 from frame_quorum.errors import ConfigurationError, OutputError, ScanError
+from frame_quorum.video import VideoExtractionResult
+
+
+def test_cli_reports_package_version(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as error:
+        main(["--version"])
+    assert error.value.code == 0
+    assert capsys.readouterr().out == f"frame-quorum {__version__}\n"
 
 
 def test_scan_writes_json_to_stdout(
@@ -45,6 +54,80 @@ def test_select_creates_manifest_and_contact_sheet(
     assert (output / "manifest.json").is_file()
     with Image.open(output / "contact-sheet.png") as sheet:
         assert sheet.format == "PNG"
+
+
+def test_benchmark_creates_machine_and_visual_reports(
+    image_factory: Callable[..., Path], tmp_path: Path
+) -> None:
+    frames = tmp_path / "frames"
+    for index in range(6):
+        image_factory(f"{index}.png", pattern=index + 1, directory=frames)
+    output = tmp_path / "benchmark"
+    assert (
+        main(
+            [
+                "benchmark",
+                str(frames),
+                "--output-dir",
+                str(output),
+                "--budget",
+                "3",
+                "--random-trials",
+                "2",
+            ]
+        )
+        == 0
+    )
+    assert json.loads((output / "benchmark.json").read_text())["kind"] == "frame-quorum-benchmark"
+    assert (output / "benchmark.svg").read_text(encoding="utf-8").startswith("<svg")
+
+
+def test_benchmark_render_failure_preserves_existing_bundle(
+    image_factory: Callable[..., Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    frames = tmp_path / "frames"
+    for index in range(3):
+        image_factory(f"{index}.png", pattern=index + 1, directory=frames)
+    output = tmp_path / "benchmark"
+    output.mkdir()
+    report = output / "benchmark.json"
+    chart = output / "benchmark.svg"
+    report.write_bytes(b"old report")
+    chart.write_bytes(b"old chart")
+
+    def fail_render(*_: object, **__: object) -> None:
+        raise OutputError("simulated benchmark render failure")
+
+    monkeypatch.setattr(cli_module, "render_benchmark_svg", fail_render)
+    assert main(["benchmark", str(frames), "--output-dir", str(output)]) == 2
+    assert report.read_bytes() == b"old report"
+    assert chart.read_bytes() == b"old chart"
+    assert sorted(path.name for path in output.iterdir()) == ["benchmark.json", "benchmark.svg"]
+
+
+def test_benchmark_rejects_output_inside_input(
+    image_factory: Callable[..., Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    frames = tmp_path / "frames"
+    image_factory("one.png", directory=frames)
+    assert main(["benchmark", str(frames), "--output-dir", str(frames / "result")]) == 2
+    assert "outside the input directory" in capsys.readouterr().err
+    assert not (frames / "result").exists()
+
+
+def test_extract_cli_uses_optional_adapter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = tmp_path / "source.mp4"
+    source.write_bytes(b"video")
+    output = tmp_path / "frames"
+
+    def fake_extract(*_: object, **__: object) -> VideoExtractionResult:
+        output.mkdir()
+        return VideoExtractionResult(
+            output, 3, 2.0, 10, 300, 1_000_000_000, "sha256:" + "a" * 64, "ffmpeg test"
+        )
+
+    monkeypatch.setattr(cli_module, "extract_video_frames", fake_extract)
+    assert main(["extract", str(source), "--output-dir", str(output), "--max-frames", "10"]) == 0
 
 
 @pytest.mark.parametrize(
