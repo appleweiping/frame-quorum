@@ -291,11 +291,11 @@ def _commit_bundle(files: tuple[tuple[Path, Path], ...]) -> None:
         rollback_errors: list[str] = []
         for target in reversed(replaced):
             try:
-                backup = backups.get(target)
-                if backup is None:
+                restore_from = backups.get(target)
+                if restore_from is None:
                     target.unlink(missing_ok=True)
                 else:
-                    backup.replace(target)
+                    restore_from.replace(target)
             except OSError as rollback_error:
                 rollback_errors.append(f"{target}: {rollback_error}")
         if rollback_errors:

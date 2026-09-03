@@ -41,12 +41,13 @@ def _bounded_copy(image: Image.Image, maximum: int) -> Image.Image:
 def difference_hash(gray: Image.Image) -> int:
     """Return a 64-bit horizontal difference hash."""
 
-    pixels = gray.resize((_HASH_WIDTH, _HASH_HEIGHT), Image.Resampling.LANCZOS).load()
-    assert pixels is not None
+    resized = gray.resize((_HASH_WIDTH, _HASH_HEIGHT), Image.Resampling.LANCZOS).convert("L")
+    pixels = resized.tobytes()
     value = 0
     for y in range(_HASH_HEIGHT):
+        row = y * _HASH_WIDTH
         for x in range(_HASH_WIDTH - 1):
-            value = (value << 1) | int(pixels[x, y] > pixels[x + 1, y])
+            value = (value << 1) | int(pixels[row + x] > pixels[row + x + 1])
     return value
 
 
@@ -73,10 +74,9 @@ def edge_energy(gray: Image.Image) -> float:
 def colorfulness(rgb: Image.Image) -> float:
     """Estimate chroma spread and mean chroma without NumPy."""
 
-    resized = rgb.resize((32, 32), Image.Resampling.BILINEAR)
-    access = resized.load()
-    assert access is not None
-    pixels = [access[x, y] for y in range(resized.height) for x in range(resized.width)]
+    resized = rgb.resize((32, 32), Image.Resampling.BILINEAR).convert("RGB")
+    bands = resized.tobytes()
+    pixels = [(bands[base], bands[base + 1], bands[base + 2]) for base in range(0, len(bands), 3)]
     if not pixels:
         return 0.0
     rg = [float(red) - green for red, green, _ in pixels]

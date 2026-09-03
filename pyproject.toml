@@ -27,7 +27,7 @@ classifiers = [
 dependencies = ["Pillow>=10.3"]
 
 [project.optional-dependencies]
-dev = ["build>=1.2", "pytest>=8.2", "pytest-cov>=5.0", "ruff>=0.8", "twine>=7.0"]
+dev = ["build>=1.2", "mypy>=1.15", "pytest>=8.2", "pytest-cov>=5.0", "ruff>=0.8", "twine>=7.0"]
 
 [project.scripts]
 frame-quorum = "frame_quorum.cli:main"
@@ -65,3 +65,8 @@ select = ["E", "F", "I", "UP", "B", "SIM", "C4", "PIE", "RUF"]
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src"]

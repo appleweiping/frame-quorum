@@ -284,11 +284,13 @@ class BenchmarkResult:
             if len(run.selected_indices) > self.selection_config.budget:
                 raise ConfigurationError("benchmark selections must not exceed the budget")
             if run.method == "seeded_random":
+                # The layout check above already pinned run.seed to this exact value.
+                seed = _trial_seed(self.benchmark_config.random_seed, run.trial)
                 random_order = tuple(
                     sorted(
                         range(len(self.frames)),
                         key=lambda position: (
-                            _portable_random_key(run.seed, self.frames[position].index),
+                            _portable_random_key(seed, self.frames[position].index),
                             position,
                         ),
                     )
@@ -613,6 +615,7 @@ def _time_uniform_order(frames: tuple[Frame, ...], budget: int) -> tuple[int, ..
     coordinates = tuple(frame.time_coordinate for frame in frames)
     start = coordinates[0]
     span = coordinates[-1] - start
+    anchors: tuple[float, ...]
     if slots == 1:
         anchors = (start + span / 2.0,)
     else:

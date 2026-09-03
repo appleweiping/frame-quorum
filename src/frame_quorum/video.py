@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import BinaryIO
+from typing import IO
 
 from .errors import ConfigurationError, OutputError, ScanError
 from .models import ScanConfig, _is_stable_json_number, _require_int64, _require_safe_text
@@ -119,7 +119,7 @@ class _BoundedCollector:
         self.truncated = False
         self.error: OSError | None = None
 
-    def drain(self, stream: BinaryIO | None) -> None:
+    def drain(self, stream: IO[bytes] | None) -> None:
         if stream is None:
             return
         try:
@@ -405,7 +405,7 @@ def _stop_process(process: subprocess.Popen[bytes]) -> None:
         process.wait()
 
 
-def _finish_reader(stream: BinaryIO | None, reader: threading.Thread) -> None:
+def _finish_reader(stream: IO[bytes] | None, reader: threading.Thread) -> None:
     reader.join(timeout=_STOP_GRACE_SECONDS)
     if reader.is_alive():
         if stream is not None:
