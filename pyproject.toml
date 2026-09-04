@@ -27,7 +27,7 @@ classifiers = [
 dependencies = ["Pillow>=10.3"]
 
 [project.optional-dependencies]
-dev = ["build>=1.2", "mypy>=1.15", "pytest>=8.2", "pytest-cov>=5.0", "ruff>=0.8", "twine>=7.0"]
+dev = ["bandit>=1.7", "build>=1.2", "mypy>=1.15", "pytest>=8.2", "pytest-cov>=5.0", "ruff>=0.8", "twine>=7.0"]
 
 [project.scripts]
 frame-quorum = "frame_quorum.cli:main"
@@ -70,3 +70,18 @@ quote-style = "double"
 python_version = "3.11"
 strict = true
 files = ["src"]
+
+[tool.bandit]
+targets = ["src"]
+# B101: `timestamps.py` asserts `config.timestamp_regex is not None` purely to narrow
+# the type for mypy strict. `ScanConfig.__post_init__` already rejects a filename
+# timestamp_mode without a regex, so the assert guards an invariant, not a security
+# boundary; stripping it under `python -O` yields a TypeError, not a bypass.
+# B406: `benchmark.py` imports `xml.sax.saxutils.escape`, which *escapes* text when the
+# SVG report is written. It never parses XML, so the XML-entity-expansion attacks this
+# blacklist exists for do not apply and defusedxml offers no replacement for it.
+# B404/B603: `video.py` invokes FFmpeg with a fixed argv list and never `shell=True`.
+# Every element is a literal, a number formatted from a validated VideoExtractionConfig,
+# or a resolved Path; the executable name is checked by `_require_safe_text`. No string
+# is ever concatenated into a command line for a shell to re-parse.
+skips = ["B101", "B404", "B406", "B603"]

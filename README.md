@@ -1,6 +1,7 @@
 # Frame Quorum
 
 [![CI](https://github.com/appleweiping/frame-quorum/actions/workflows/ci.yml/badge.svg)](https://github.com/appleweiping/frame-quorum/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/appleweiping/frame-quorum/actions/workflows/codeql.yml/badge.svg)](https://github.com/appleweiping/frame-quorum/actions/workflows/codeql.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-58d6a9)](LICENSE)
 
