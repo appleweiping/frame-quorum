@@ -98,8 +98,62 @@ frame-quorum select ./frames --output-dir ./selection \
   --timestamp-unit milliseconds
 ```
 
-The regex may contain a named `ts` group or use its first capture group. Other policies are `mtime` and
-`none`. A filename mismatch is an error rather than a silently invented timestamp.
+The regex may contain a named `ts` group or use its first capture group. Other policies are `exif`, `mtime`,
+and `none`. A filename mismatch is an error rather than a silently invented timestamp.
+
+### Infer capture time from EXIF
+
+```bash
+frame-quorum select ./photos --output-dir ./selection --timestamp-mode exif
+```
+
+`exif` reads capture time from the first populated tag in this precedence order:
+
+| Order | Tag | Meaning | UTC offset tag |
+| --- | --- | --- | --- |
+| 1 | `DateTimeOriginal` | when the shutter fired | `OffsetTimeOriginal` |
+| 2 | `DateTimeDigitized` | when the image was digitized | `OffsetTimeDigitized` |
+| 3 | `DateTime` | when imaging software last wrote the file | `OffsetTime` |
+
+The order runs from the most specific record of the capture event to the least. A tag that is absent, or that
+holds the all-zero `0000:00:00 00:00:00` "not recorded" placeholder, is skipped. A tag that is *populated but
+unreadable* — a wrong layout, an impossible date, a non-text value — is an error, because falling through to a
+weaker tag would silently swap in a different meaning for a corrupt value.
+
+EXIF capture times carry no time zone. When the matching offset tag holds a `+HH:MM` or `-HH:MM` value it is
+applied; an absent or unset offset makes the value read as UTC. That is a normalization, not an inference:
+selection consumes only differences between timestamps, so one unknown offset shared by the whole sequence
+cancels out. Mixing sources from different zones without offset tags does not, and a sequence whose timestamps
+then run backwards is rejected. A malformed offset is an error rather than a silent fall back to UTC. Sub-second
+tags are not read, so EXIF capture time has one-second resolution.
+
+### Expand animated images
+
+Animated GIF, APNG, and WebP containers count as a single image until expansion is requested:
+
+```bash
+frame-quorum select ./clips --output-dir ./selection \
+  --extensions gif png webp \
+  --expand-animations \
+  --max-animation-frames 64 \
+  --max-animation-decoded-bytes 268435456
+```
+
+Each internal frame then becomes its own measured record with a path of the form `clip.gif#frame=3` and a
+`source_frame_index` of `3`, so every decision traces back to both the container and the position inside it.
+Expanded records share the container's file path and byte size. A container holding more frames than
+`--max-animation-frames`, or whose estimated decoded RGB bytes exceed `--max-animation-decoded-bytes`, is
+rejected with an error before any internal frame is read; the animation is never silently truncated.
+`.gif` is not in the default extension set, so admit it with `--extensions`.
+
+```python
+from frame_quorum import AnimationConfig, ScanConfig, scan_frames
+
+frames = scan_frames("clips", ScanConfig(extensions=(".gif",)), animation=AnimationConfig(max_frames=32))
+```
+
+Expanded frames follow the same timestamp policy as any other frame; with the default `index` mode they
+advance by `1 / frame_rate`. Stored per-frame animation delays are not read.
 
 ### Optional video extraction
 
@@ -173,6 +227,9 @@ validation and JSON behavior stable across supported Python versions, including 
 Continuous numeric settings and timestamps accept finite floating-point values. When supplied as Python integers,
 they must fit the signed 64-bit range so every accepted value also has a stable JSON representation.
 
+A frame's `source_frame_index` and a manifest's `animation_config` are present only when animated-image
+expansion produced them, so manifests for ordinary single-image inputs are byte-identical to earlier releases.
+
 Minor releases may add fields. Removing or changing field meaning requires a schema-version change.
 
 ## Development
@@ -194,8 +251,10 @@ protocol documented in [benchmarks/README.md](benchmarks/README.md).
 
 - A perceptual change is not necessarily an important event; the tool does not recognize people or objects.
 - Sharp text, overlays, camera flashes, and cuts can receive high change or quality scores.
-- Animated image formats are treated as one image file, not expanded into their internal frames.
-- EXIF timestamps are not inferred. Use an explicit filename rule, modification time, or indexed frame rate.
+- Animated image formats are one image file by default. `--expand-animations` opts into internal-frame
+  expansion under explicit frame and decoded-byte limits, and reads no per-frame animation delays.
+- EXIF capture time is opt-in through `--timestamp-mode exif`, has one-second resolution, and reads an undeclared
+  zone as UTC. Where EXIF is absent or untrusted, use a filename rule, modification time, or indexed frame rate.
 - Very large directories are scanned sequentially. Images are downsampled for metrics, but file decoding still
   occurs once per frame.
 - The contact sheet reads selected source images again to preserve visual quality and rejects files whose

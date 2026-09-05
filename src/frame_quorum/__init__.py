@@ -13,12 +13,20 @@ from .benchmark import (
     run_benchmark,
     source_content_digest,
 )
-from .models import Frame, FrameDecision, ScanConfig, SelectionConfig, SelectionResult
+from .models import (
+    AnimationConfig,
+    Frame,
+    FrameDecision,
+    ScanConfig,
+    SelectionConfig,
+    SelectionResult,
+)
 from .scanner import scan_frames
 from .selector import select_frames
 from .video import VideoExtractionConfig, VideoExtractionResult, extract_video_frames, ffmpeg_available
 
 __all__ = [
+    "AnimationConfig",
     "BenchmarkConfig",
     "BenchmarkProvenance",
     "BenchmarkResult",

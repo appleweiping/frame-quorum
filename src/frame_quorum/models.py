@@ -13,6 +13,8 @@ from .errors import ConfigurationError
 _MAX_SIGNED_64 = (1 << 63) - 1
 _MIN_SIGNED_64 = -(1 << 63)
 _MAX_UNSIGNED_64 = (1 << 64) - 1
+_MAX_ANIMATION_FRAMES = 100_000
+_MAX_ANIMATION_DECODED_BYTES = 1 << 40
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,9 +35,10 @@ class ScanConfig:
             "index",
             "filename",
             "mtime",
+            "exif",
             "none",
         }:
-            raise ConfigurationError("timestamp_mode must be index, filename, mtime, or none")
+            raise ConfigurationError("timestamp_mode must be index, filename, mtime, exif, or none")
         if not _is_stable_json_number(self.frame_rate) or self.frame_rate <= 0:
             raise ConfigurationError("frame_rate must be greater than zero")
         if not isinstance(self.timestamp_unit, str) or self.timestamp_unit not in {
@@ -57,6 +60,31 @@ class ScanConfig:
             or any(not _valid_extension(extension) for extension in self.extensions)
         ):
             raise ConfigurationError("extensions must be a non-empty sequence of file extensions")
+
+
+@dataclass(frozen=True, slots=True)
+class AnimationConfig:
+    """Opt-in limits for expanding an animated image into its internal frames.
+
+    Passing an instance to ``scan_frames`` enables expansion. Both limits apply
+    to one animated container: ``max_decoded_bytes`` bounds the RGB bytes the
+    whole container would decode to, estimated before any internal frame is
+    read. Exceeding either limit raises ``ScanError`` instead of silently
+    truncating the animation.
+    """
+
+    max_frames: int = 64
+    max_decoded_bytes: int = 268_435_456
+
+    def validate(self) -> None:
+        _require_int64(self.max_frames, "animation max_frames", minimum=1)
+        if self.max_frames > _MAX_ANIMATION_FRAMES:
+            raise ConfigurationError(f"animation max_frames cannot exceed {_MAX_ANIMATION_FRAMES}")
+        _require_int64(self.max_decoded_bytes, "animation max_decoded_bytes", minimum=1)
+        if self.max_decoded_bytes > _MAX_ANIMATION_DECODED_BYTES:
+            raise ConfigurationError(
+                f"animation max_decoded_bytes cannot exceed {_MAX_ANIMATION_DECODED_BYTES}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,7 +158,13 @@ class FrameMetrics:
 
 @dataclass(frozen=True, slots=True)
 class Frame:
-    """One scanned image and its immutable measurements."""
+    """One scanned image and its immutable measurements.
+
+    An expanded animated container contributes one record per internal frame.
+    Those records share ``path`` and ``byte_size`` with the container and are
+    told apart by ``source_frame_index`` and a ``name#frame=N`` relative path.
+    ``source_frame_index`` is ``None`` for an ordinary single-image file.
+    """
 
     index: int
     path: Path
@@ -140,6 +174,7 @@ class Frame:
     height: int
     byte_size: int
     metrics: FrameMetrics
+    source_frame_index: int | None = None
 
     def validate(self) -> None:
         """Validate a directly constructed frame before it enters an operation."""
@@ -156,6 +191,8 @@ class Frame:
         if not isinstance(self.metrics, FrameMetrics):
             raise ConfigurationError("frame metrics must be FrameMetrics")
         self.metrics.validate()
+        if self.source_frame_index is not None:
+            _require_int64(self.source_frame_index, "frame source frame index")
 
     @property
     def time_coordinate(self) -> float | int:
@@ -170,7 +207,7 @@ class Frame:
 
     def serializable(self) -> dict[str, Any]:
         self.validate()
-        return {
+        data: dict[str, Any] = {
             "index": self.index,
             "path": self.relative_path,
             "timestamp": self.timestamp,
@@ -179,6 +216,9 @@ class Frame:
             "byte_size": self.byte_size,
             "metrics": self.metrics.serializable(),
         }
+        if self.source_frame_index is not None:
+            data["source_frame_index"] = self.source_frame_index
+        return data
 
 
 @dataclass(frozen=True, slots=True)

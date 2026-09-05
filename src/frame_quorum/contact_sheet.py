@@ -69,6 +69,8 @@ def render_contact_sheet(
             with warnings.catch_warnings():
                 warnings.simplefilter("error", Image.DecompressionBombWarning)
                 with Image.open(frame.path) as opened:
+                    if frame.source_frame_index is not None:
+                        opened.seek(frame.source_frame_index)
                     rendered = ImageOps.exif_transpose(opened).convert("RGB")
                     dimensions = rendered.size
                     metrics = measure_image(rendered)
@@ -87,6 +89,7 @@ def render_contact_sheet(
             Image.DecompressionBombError,
             Image.DecompressionBombWarning,
             UnidentifiedImageError,
+            EOFError,
             OSError,
             ValueError,
         ) as error:

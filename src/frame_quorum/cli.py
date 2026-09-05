@@ -20,7 +20,7 @@ from .benchmark import (
 from .contact_sheet import render_contact_sheet
 from .demo import create_demo_sequence
 from .errors import ConfigurationError, FrameQuorumError, OutputError
-from .models import Frame, ScanConfig, SelectionConfig
+from .models import AnimationConfig, Frame, ScanConfig, SelectionConfig
 from .reporting import scan_manifest, selection_manifest, write_json
 from .scanner import scan_frames
 from .selector import select_frames
@@ -38,12 +38,14 @@ def build_parser() -> argparse.ArgumentParser:
     scan = commands.add_parser("scan", help="measure a frame directory and emit JSON")
     scan.add_argument("input", type=Path)
     _add_scan_options(scan)
+    _add_animation_options(scan)
     scan.add_argument("--output", "-o", type=Path, help="write JSON here instead of stdout")
     scan.set_defaults(handler=_handle_scan)
 
     select = commands.add_parser("select", help="select key frames and create a report")
     select.add_argument("input", type=Path)
     _add_scan_options(select)
+    _add_animation_options(select)
     _add_selection_options(select)
     select.add_argument("--output-dir", "-o", type=Path, required=True)
     select.add_argument("--columns", type=int, default=3)
@@ -92,7 +94,7 @@ def _add_scan_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--recursive", action="store_true", help="include nested image directories")
     parser.add_argument(
         "--timestamp-mode",
-        choices=("index", "filename", "mtime", "none"),
+        choices=("index", "filename", "mtime", "exif", "none"),
         default="index",
         help="timestamp source (default: index)",
     )
@@ -104,6 +106,34 @@ def _add_scan_options(parser: argparse.ArgumentParser) -> None:
         "--timestamp-unit",
         choices=("seconds", "milliseconds", "microseconds"),
         default="seconds",
+    )
+    parser.add_argument(
+        "--extensions",
+        nargs="+",
+        metavar="EXT",
+        default=list(ScanConfig().extensions),
+        help="image extensions to discover (default: %(default)s)",
+    )
+
+
+def _add_animation_options(parser: argparse.ArgumentParser) -> None:
+    defaults = AnimationConfig()
+    parser.add_argument(
+        "--expand-animations",
+        action="store_true",
+        help="expand animated GIF, APNG, and WebP files into their internal frames",
+    )
+    parser.add_argument(
+        "--max-animation-frames",
+        type=int,
+        default=defaults.max_frames,
+        help="maximum internal frames accepted from one animated file",
+    )
+    parser.add_argument(
+        "--max-animation-decoded-bytes",
+        type=int,
+        default=defaults.max_decoded_bytes,
+        help="maximum estimated RGB bytes one expanded animated file may decode to",
     )
 
 
@@ -124,6 +154,16 @@ def _scan_config(args: argparse.Namespace) -> ScanConfig:
         frame_rate=args.frame_rate,
         timestamp_regex=args.timestamp_regex,
         timestamp_unit=args.timestamp_unit,
+        extensions=tuple(args.extensions),
+    )
+
+
+def _animation_config(args: argparse.Namespace) -> AnimationConfig | None:
+    if not args.expand_animations:
+        return None
+    return AnimationConfig(
+        max_frames=args.max_animation_frames,
+        max_decoded_bytes=args.max_animation_decoded_bytes,
     )
 
 
@@ -141,9 +181,10 @@ def _selection_config(args: argparse.Namespace) -> SelectionConfig:
 
 def _handle_scan(args: argparse.Namespace) -> int:
     config = _scan_config(args)
-    frames = scan_frames(args.input, config)
+    animation = _animation_config(args)
+    frames = scan_frames(args.input, config, animation=animation)
     rendered = write_json(
-        scan_manifest(frames, config),
+        scan_manifest(frames, config, animation=animation),
         args.output,
         ensure_ascii=args.output is None,
     )
@@ -157,7 +198,8 @@ def _handle_scan(args: argparse.Namespace) -> int:
 def _handle_select(args: argparse.Namespace) -> int:
     _require_output_outside_input(args.input, args.output_dir)
     scan_config = _scan_config(args)
-    frames = scan_frames(args.input, scan_config)
+    animation = _animation_config(args)
+    frames = scan_frames(args.input, scan_config, animation=animation)
     return _write_selection(
         frames,
         scan_config,
@@ -165,6 +207,7 @@ def _handle_select(args: argparse.Namespace) -> int:
         args.output_dir,
         columns=args.columns,
         thumbnail_width=args.thumbnail_width,
+        animation=animation,
     )
 
 
@@ -246,6 +289,7 @@ def _write_selection(
     *,
     columns: int,
     thumbnail_width: int,
+    animation: AnimationConfig | None = None,
 ) -> int:
     result = select_frames(frames, selection_config)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -255,7 +299,7 @@ def _write_selection(
         staging_dir = Path(staging)
         staged_manifest = staging_dir / manifest.name
         staged_sheet = staging_dir / sheet.name
-        write_json(selection_manifest(result, scan_config), staged_manifest)
+        write_json(selection_manifest(result, scan_config, animation=animation), staged_manifest)
         render_contact_sheet(
             result,
             staged_sheet,

@@ -10,6 +10,7 @@ from typing import Any
 from .errors import ConfigurationError
 from .models import (
     _MAX_SIGNED_64,
+    AnimationConfig,
     Frame,
     ScanConfig,
     SelectionResult,
@@ -20,13 +21,18 @@ from .models import (
 SCHEMA_VERSION = "1.0"
 
 
-def scan_manifest(frames: tuple[Frame, ...], config: ScanConfig) -> dict[str, Any]:
+def scan_manifest(
+    frames: tuple[Frame, ...],
+    config: ScanConfig,
+    *,
+    animation: AnimationConfig | None = None,
+) -> dict[str, Any]:
     """Build a JSON-serializable scan report."""
 
     _validate_scan_inputs(frames, config)
     total_bytes = sum(frame.byte_size for frame in frames)
     _require_int64(total_bytes, "manifest total byte size")
-    return {
+    manifest = {
         "schema_version": SCHEMA_VERSION,
         "kind": "frame-quorum-scan",
         "summary": {
@@ -37,9 +43,15 @@ def scan_manifest(frames: tuple[Frame, ...], config: ScanConfig) -> dict[str, An
         "scan_config": _serializable_scan_config(config),
         "frames": [frame.serializable() for frame in frames],
     }
+    return _with_animation_config(manifest, animation)
 
 
-def selection_manifest(result: SelectionResult, scan_config: ScanConfig) -> dict[str, Any]:
+def selection_manifest(
+    result: SelectionResult,
+    scan_config: ScanConfig,
+    *,
+    animation: AnimationConfig | None = None,
+) -> dict[str, Any]:
     """Build a complete selection report, including rejected frames."""
 
     if not isinstance(result, SelectionResult):
@@ -50,7 +62,7 @@ def selection_manifest(result: SelectionResult, scan_config: ScanConfig) -> dict
     scan_config.validate()
     selected = set(result.selected_indices)
     decisions = {decision.index: decision for decision in result.decisions}
-    return {
+    manifest = {
         "schema_version": SCHEMA_VERSION,
         "kind": "frame-quorum-selection",
         "summary": {
@@ -70,6 +82,7 @@ def selection_manifest(result: SelectionResult, scan_config: ScanConfig) -> dict
         ],
         "selected": [frame.serializable() for frame in result.frames if frame.index in selected],
     }
+    return _with_animation_config(manifest, animation)
 
 
 def write_json(
@@ -99,6 +112,18 @@ def write_json(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(rendered, encoding="utf-8", newline="\n")
     return rendered
+
+
+def _with_animation_config(manifest: dict[str, Any], animation: AnimationConfig | None) -> dict[str, Any]:
+    """Record expansion limits only when animated-image expansion was requested."""
+
+    if animation is None:
+        return manifest
+    if not isinstance(animation, AnimationConfig):
+        raise ConfigurationError("animation must be AnimationConfig or None")
+    animation.validate()
+    manifest["animation_config"] = asdict(animation)
+    return manifest
 
 
 def _serializable_scan_config(config: ScanConfig) -> dict[str, Any]:
