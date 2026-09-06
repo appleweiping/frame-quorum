@@ -15,6 +15,7 @@ _MIN_SIGNED_64 = -(1 << 63)
 _MAX_UNSIGNED_64 = (1 << 64) - 1
 _MAX_ANIMATION_FRAMES = 100_000
 _MAX_ANIMATION_DECODED_BYTES = 1 << 40
+_MAX_SCAN_WORKERS = 64
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +86,30 @@ class AnimationConfig:
             raise ConfigurationError(
                 f"animation max_decoded_bytes cannot exceed {_MAX_ANIMATION_DECODED_BYTES}"
             )
+
+
+@dataclass(frozen=True, slots=True)
+class ConcurrencyConfig:
+    """Opt-in worker count for measuring several files at once.
+
+    ``workers=1`` is the default and scans strictly sequentially, so callers who
+    supply nothing, or an explicit single worker, keep today's behaviour. Larger
+    values only change how fast the files are read: discovery order, indices,
+    metrics, and error messages are identical at every worker count, so the
+    count is an execution detail and is deliberately absent from manifests.
+
+    The count is caller-supplied rather than derived from the host because each
+    worker holds one fully decoded image, making peak memory a multiple of the
+    worker count. A machine-derived default would make that multiple, and the
+    thread count, vary by host for an unchanged command.
+    """
+
+    workers: int = 1
+
+    def validate(self) -> None:
+        _require_int64(self.workers, "concurrency workers", minimum=1)
+        if self.workers > _MAX_SCAN_WORKERS:
+            raise ConfigurationError(f"concurrency workers cannot exceed {_MAX_SCAN_WORKERS}")
 
 
 @dataclass(frozen=True, slots=True)

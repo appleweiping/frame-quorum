@@ -19,6 +19,14 @@ All notable changes are documented here. The project follows semantic versioning
   that refuse an oversized container instead of truncating it. Expanded frames carry a `source_frame_index` and a
   `name#frame=N` path so every decision traces back to its container and position, and the contact sheet re-reads the
   exact internal frame it reports.
+- Add opt-in parallel scanning. `ConcurrencyConfig` and `--workers` decode and measure several files at once while
+  every observable output stays identical: discovery order, frame indices, all metrics, manifest bytes, and the
+  benchmark's measured-record fingerprint are unchanged at any worker count, and the count is deliberately absent
+  from manifests because it is an execution detail. Only measurement overlaps; indices, timestamps, and the
+  post-read size/mtime/device/inode check stay on the calling thread in discovery order, and futures are consumed
+  in that order so the earliest failing path is reported with the same message no matter which worker failed
+  first. The default stays one worker because each worker holds one decoded image, so a host-derived default would
+  make thread count and peak memory machine-dependent.
 - Add a `--extensions` flag so the CLI can admit file types outside the default discovery set, such as `.gif`.
 - Add an opt-in `exif` timestamp policy that reads capture time from `DateTimeOriginal`, then `DateTimeDigitized`,
   then `DateTime`, applying the matching EXIF 2.31 UTC offset tag when one is recorded and reading an undeclared

@@ -23,8 +23,8 @@ directory / image
 ## Modules
 
 - `scanner.py` discovers supported files, establishes natural ordering, corrects EXIF orientation, optionally
-  expands animated containers, and creates immutable `Frame` records. Decode errors stop the scan with a
-  path-specific message.
+  expands animated containers, optionally decodes several files at once, and creates immutable `Frame` records.
+  Decode errors stop the scan with a path-specific message.
 - `timestamps.py` owns all conversions from index, filename, modification time, or EXIF capture time to a
   floating-point coordinate.
 - `metrics.py` implements bounded-resolution Pillow measurements and the composite content distance.
@@ -91,6 +91,45 @@ Because one container is opened for pixels and read again for metadata, the scan
 modification time, device, and inode before decoding and re-checks them afterwards. A container replaced during
 its own scan produces a `ScanError` instead of a record mixing measurements from two files.
 
+## Parallel scanning
+
+A scan is sequential unless the caller passes a `ConcurrencyConfig`, and the worker count is an execution choice
+rather than a measurement input: it never reaches a manifest, and every observable output is identical at every
+worker count.
+
+Two properties make that hold. First, a worker only ever runs `_measure_file`, which snapshots one file, decodes
+it, and measures its internal frames. That step touches no shared state and depends on no other file's result, so
+it is safe to run in any order. Second, everything order-dependent stays on the calling thread. `_build_frames`
+walks the discovered paths in order, assigns indices from the running frame count, applies the timestamp policy,
+and performs the post-read identity check, so indices stay contiguous even across files that expand into
+different numbers of frames.
+
+Failure reporting is order-stable for the same reason. A parallel scan submits one future per discovered path and
+then consumes those futures in discovery order, so `Future.result()` re-raises the exception belonging to the
+earliest failing path no matter which worker failed first. Remaining futures are cancelled, keeping the
+sequential promise that a scan stops instead of reading the rest of a directory after a bad file. A parallel scan
+may already have decoded some later files; decoding writes nothing, so that is not observable.
+
+Threads rather than processes, because the bottleneck is Pillow's decode and resample. Those run in C and release
+the GIL, while the Python-level work per file is bounded by the 128x128 metric sample. Processes would add
+interpreter start-up, would have to pickle every record back across a boundary, and would multiply peak memory by
+the worker count on every platform including Windows spawn; threads keep one address space, one warning-filter
+installation, and one error path.
+
+The decompression-bomb escalation moved with this change. `warnings` filters are process-global, so entering
+`catch_warnings` once per file would let one worker restore the filters while another worker is still decoding.
+The escalation is now installed once, on the calling thread, and stays in force for every decode the scan
+performs.
+
+The per-file integrity rules are unchanged. The size, modification time, device, and inode snapshot is taken by
+the worker before decoding and compared on the calling thread after the timestamp policy has read whatever
+metadata it needs, so the window a concurrently replaced file must survive still spans both the pixel read and
+the metadata read.
+
+The count is caller-supplied and bounded to 64. A default derived from the host's CPU count would leave output
+identical but would make thread count and peak memory — one decoded image per worker — depend on the machine, so
+the default stays one worker and parallelism is opt-in.
+
 ## Selection invariants
 
 `select_frames` guarantees:
@@ -127,11 +166,12 @@ Rank means greedy selection order, not chronological position. The output's `sel
 
 ## Complexity
 
-Scanning is linear in frame count and bounded metric pixels. The selector computes the sequence span once, then
-greedy selection compares candidates only with already selected frames. Its runtime is approximately
-`O(n × budget²)` with a small user-controlled budget, and record memory is `O(n)`. The contact-sheet output canvas
-is capped at 50 million pixels. Source decoding and EXIF transposition can still use memory proportional to an
-input image's full resolution, so OS-level limits remain necessary for untrusted media.
+Scanning is linear in frame count and bounded metric pixels. Optional workers divide the wall-clock decode cost
+without changing that bound, and bound peak decode memory to one image per worker. The selector computes the
+sequence span once, then greedy selection compares candidates only with already selected frames. Its runtime is
+approximately `O(n × budget²)` with a small user-controlled budget, and record memory is `O(n)`. The
+contact-sheet output canvas is capped at 50 million pixels. Source decoding and EXIF transposition can still use
+memory proportional to an input image's full resolution, so OS-level limits remain necessary for untrusted media.
 
 ## Extension points
 

@@ -20,7 +20,7 @@ from .benchmark import (
 from .contact_sheet import render_contact_sheet
 from .demo import create_demo_sequence
 from .errors import ConfigurationError, FrameQuorumError, OutputError
-from .models import AnimationConfig, Frame, ScanConfig, SelectionConfig
+from .models import AnimationConfig, ConcurrencyConfig, Frame, ScanConfig, SelectionConfig
 from .reporting import scan_manifest, selection_manifest, write_json
 from .scanner import scan_frames
 from .selector import select_frames
@@ -114,6 +114,15 @@ def _add_scan_options(parser: argparse.ArgumentParser) -> None:
         default=list(ScanConfig().extensions),
         help="image extensions to discover (default: %(default)s)",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=ConcurrencyConfig().workers,
+        help=(
+            "threads that decode and measure files at once; output is identical "
+            "at every value (default: %(default)s, sequential)"
+        ),
+    )
 
 
 def _add_animation_options(parser: argparse.ArgumentParser) -> None:
@@ -158,6 +167,10 @@ def _scan_config(args: argparse.Namespace) -> ScanConfig:
     )
 
 
+def _concurrency_config(args: argparse.Namespace) -> ConcurrencyConfig:
+    return ConcurrencyConfig(workers=args.workers)
+
+
 def _animation_config(args: argparse.Namespace) -> AnimationConfig | None:
     if not args.expand_animations:
         return None
@@ -182,7 +195,7 @@ def _selection_config(args: argparse.Namespace) -> SelectionConfig:
 def _handle_scan(args: argparse.Namespace) -> int:
     config = _scan_config(args)
     animation = _animation_config(args)
-    frames = scan_frames(args.input, config, animation=animation)
+    frames = scan_frames(args.input, config, animation=animation, concurrency=_concurrency_config(args))
     rendered = write_json(
         scan_manifest(frames, config, animation=animation),
         args.output,
@@ -199,7 +212,7 @@ def _handle_select(args: argparse.Namespace) -> int:
     _require_output_outside_input(args.input, args.output_dir)
     scan_config = _scan_config(args)
     animation = _animation_config(args)
-    frames = scan_frames(args.input, scan_config, animation=animation)
+    frames = scan_frames(args.input, scan_config, animation=animation, concurrency=_concurrency_config(args))
     return _write_selection(
         frames,
         scan_config,
@@ -219,7 +232,7 @@ def _handle_benchmark(args: argparse.Namespace) -> int:
         random_seed=args.random_seed,
         random_trials=args.random_trials,
     )
-    frames = scan_frames(args.input, scan_config)
+    frames = scan_frames(args.input, scan_config, concurrency=_concurrency_config(args))
     result = run_benchmark(
         frames,
         selection_config,

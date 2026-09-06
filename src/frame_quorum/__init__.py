@@ -15,6 +15,7 @@ from .benchmark import (
 )
 from .models import (
     AnimationConfig,
+    ConcurrencyConfig,
     Frame,
     FrameDecision,
     ScanConfig,
@@ -31,6 +32,7 @@ __all__ = [
     "BenchmarkProvenance",
     "BenchmarkResult",
     "BenchmarkRun",
+    "ConcurrencyConfig",
     "EvaluationMetrics",
     "Frame",
     "FrameDecision",

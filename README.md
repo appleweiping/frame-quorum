@@ -155,6 +155,33 @@ frames = scan_frames("clips", ScanConfig(extensions=(".gif",)), animation=Animat
 Expanded frames follow the same timestamp policy as any other frame; with the default `index` mode they
 advance by `1 / frame_rate`. Stored per-frame animation delays are not read.
 
+### Scan large directories in parallel
+
+Decoding dominates a scan, so a large directory can overlap it across worker threads:
+
+```bash
+frame-quorum scan ./frames --workers 8 --output scan.json
+```
+
+`--workers` is accepted by `scan`, `select`, and `benchmark`, and changes nothing observable. Discovery order,
+frame indices, every metric, the manifest bytes, and the benchmark's measured-record fingerprint are identical
+at every worker count. The count itself is an execution detail rather than a measurement input, so it is
+deliberately absent from manifests: a report produced with eight workers is byte-identical to a sequential one.
+
+The default is a single worker — strictly sequential — rather than a value derived from the host. Each worker
+holds one fully decoded image, so a CPU-derived default would make thread count and peak memory vary by machine
+for an unchanged command. Choose a count between 1 and 64 to suit the machine actually running the scan.
+
+Failures stay order-stable. Sequential scanning stops at the first unreadable file in path order; a parallel scan
+discovers failures out of order but consumes its results in path order, so it reports the same file with the same
+message and then cancels the rest of the queue instead of reading on.
+
+```python
+from frame_quorum import ConcurrencyConfig, scan_frames
+
+frames = scan_frames("frames", concurrency=ConcurrencyConfig(workers=8))
+```
+
 ### Optional video extraction
 
 If FFmpeg is installed, create a bounded, validated image sequence without adding a Python dependency:
@@ -255,8 +282,9 @@ protocol documented in [benchmarks/README.md](benchmarks/README.md).
   expansion under explicit frame and decoded-byte limits, and reads no per-frame animation delays.
 - EXIF capture time is opt-in through `--timestamp-mode exif`, has one-second resolution, and reads an undeclared
   zone as UTC. Where EXIF is absent or untrusted, use a filename rule, modification time, or indexed frame rate.
-- Very large directories are scanned sequentially. Images are downsampled for metrics, but file decoding still
-  occurs once per frame.
+- Directories are scanned sequentially unless `--workers` asks for more. Extra workers overlap file decoding
+  only: images are still downsampled for metrics, each file is still decoded exactly once, and peak memory grows
+  with the worker count because every worker holds one fully decoded image.
 - The contact sheet reads selected source images again to preserve visual quality and rejects files whose
   dimensions, size, or measured content changed after scanning.
 - Filename timestamp regular expressions are caller-supplied Python regular expressions; do not accept an
