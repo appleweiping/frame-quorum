@@ -13,6 +13,8 @@ from .benchmark import (
     run_benchmark,
     source_content_digest,
 )
+from .detectors import DetectorName, Transition, detect_transitions
+from .exports import render_decision_csv, write_decision_csv
 from .models import (
     AnimationConfig,
     ConcurrencyConfig,
@@ -35,6 +37,7 @@ __all__ = [
     "BenchmarkResult",
     "BenchmarkRun",
     "ConcurrencyConfig",
+    "DetectorName",
     "EvaluationMetrics",
     "Frame",
     "FrameDecision",
@@ -44,20 +47,24 @@ __all__ = [
     "SelectionConfig",
     "SelectionResult",
     "Shot",
+    "Transition",
     "VideoExtractionConfig",
     "VideoExtractionResult",
     "allocate_budget",
     "analyze_scenes",
     "benchmark_manifest",
     "detect_shots",
+    "detect_transitions",
     "evaluate_selection",
     "extract_video_frames",
     "ffmpeg_available",
     "render_benchmark_svg",
+    "render_decision_csv",
     "run_benchmark",
     "scan_frames",
     "select_frames",
     "source_content_digest",
+    "write_decision_csv",
 ]
 
 __version__ = VERSION

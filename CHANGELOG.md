@@ -4,7 +4,14 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
-_The next release is prepared from the 0.3.0 expansion below._
+No unreleased changes.
+
+## [0.4.0] - 2026-09-07
+
+### Added
+
+- Added content, luminance, and color transition detectors with explicit thresholds and minimum-run controls.
+- Added stable CSV decision exports for downstream review and reproducible selection reports.
 
 ## [0.3.0] - 2026-09-07
 

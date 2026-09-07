@@ -203,6 +203,23 @@ probing, or post-decode validation. The manifest records the verified input SHA-
 arguments, limits, and result. `max_output_bytes` and `total_output_bytes` count generated PNGs only and exclude the
 small `extraction.json` record.
 
+### Detector and export APIs
+
+For representation-level shot boundaries, choose the signal that matches the
+failure mode: `content` combines structure and color, `luminance` is useful for
+fades, and `color` isolates palette changes.
+
+```python
+from frame_quorum import detect_transitions, render_decision_csv
+
+transitions = detect_transitions(frames, detector="luminance", threshold=0.25)
+csv_text = render_decision_csv(selection_result)
+```
+
+These detectors are intentionally not semantic scene classifiers. The CSV export
+contains every frame, its reason code, and score breakdown so a reviewer can audit
+why a frame was selected or rejected.
+
 ## How selection works
 
 Each image is measured once:
