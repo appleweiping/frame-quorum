@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -22,6 +23,12 @@ from .demo import create_demo_sequence
 from .errors import ConfigurationError, FrameQuorumError, OutputError
 from .models import AnimationConfig, ConcurrencyConfig, Frame, ScanConfig, SelectionConfig
 from .reporting import scan_manifest, selection_manifest, write_json
+from .representation import (
+    DEFAULT_COVERED_DISTANCE,
+    MAX_REPORTED_GAPS,
+    analyze_representation,
+    budget_curve,
+)
 from .scanner import scan_frames
 from .selector import select_frames
 from .video import VideoExtractionConfig, extract_video_frames
@@ -51,6 +58,28 @@ def build_parser() -> argparse.ArgumentParser:
     select.add_argument("--columns", type=int, default=3)
     select.add_argument("--thumbnail-width", type=int, default=320)
     select.set_defaults(handler=_handle_select)
+
+    coverage = commands.add_parser(
+        "coverage", help="measure how well a selection represents the frames it drops"
+    )
+    coverage.add_argument("input", type=Path)
+    _add_scan_options(coverage)
+    _add_animation_options(coverage)
+    _add_selection_options(coverage)
+    coverage.add_argument("--output", type=Path, help="write the JSON report here")
+    coverage.add_argument(
+        "--covered-distance",
+        type=float,
+        default=DEFAULT_COVERED_DISTANCE,
+        help="content distance below which a dropped frame counts as represented",
+    )
+    coverage.add_argument(
+        "--budgets",
+        type=int,
+        nargs="+",
+        help="also re-select at these budgets and report what each represents",
+    )
+    coverage.set_defaults(handler=_handle_coverage)
 
     benchmark = commands.add_parser(
         "benchmark", help="compare selection against reproducible transparent baselines"
@@ -222,6 +251,55 @@ def _handle_select(args: argparse.Namespace) -> int:
         thumbnail_width=args.thumbnail_width,
         animation=animation,
     )
+
+
+def _handle_coverage(args: argparse.Namespace) -> int:
+    scan_config = _scan_config(args)
+    animation = _animation_config(args)
+    frames = scan_frames(args.input, scan_config, animation=animation, concurrency=_concurrency_config(args))
+    selection_config = _selection_config(args)
+    report = analyze_representation(
+        select_frames(frames, selection_config),
+        covered_distance=args.covered_distance,
+    )
+    payload: dict[str, object] = {"representation": report.as_dict()}
+    print(
+        f"kept {report.selected} of {report.selected + report.dropped}; "
+        f"worst gap {report.worst_distance:.3f}, mean {report.mean_distance:.3f}, "
+        f"{report.covered_fraction:.0%} of dropped frames within {args.covered_distance:.3f}"
+    )
+    for gap in report.gaps[:MAX_REPORTED_GAPS]:
+        print(
+            f"  frames {gap.start_index}-{gap.end_index} are represented no closer "
+            f"than {gap.worst_distance:.3f}"
+        )
+    if args.budgets:
+        curve = budget_curve(frames, selection_config, args.budgets, covered_distance=args.covered_distance)
+        payload["budget_curve"] = curve.as_dict()
+        print()
+        print(f"{'budget':>7} {'kept':>5} {'worst':>7} {'mean':>7}")
+        for point in curve.points:
+            print(
+                f"{point.budget:>7} {point.selected:>5} "
+                f"{point.worst_distance:>7.3f} {point.mean_distance:>7.3f}"
+            )
+        knee = curve.knee()
+        if knee is None:
+            print(
+                "  the worst gap was still falling at the largest budget tried, "
+                "so the budget is still binding"
+            )
+        else:
+            print(f"  the worst gap stops improving at a budget of {knee}")
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(payload, indent=2, allow_nan=False) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        print(f"  wrote {args.output}")
+    return 0
 
 
 def _handle_benchmark(args: argparse.Namespace) -> int:
