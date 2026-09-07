@@ -26,6 +26,15 @@ from .models import (
     SelectionConfig,
     SelectionResult,
 )
+from .native_scenes import (
+    NativeDetectorStatistic,
+    NativeScene,
+    NativeSceneConfig,
+    NativeSceneResult,
+    NativeSceneSample,
+    NativeSceneStatistic,
+    detect_native_scenes,
+)
 from .native_video import (
     NativeVideoConfig,
     NativeVideoDiagnostics,
@@ -64,6 +73,12 @@ __all__ = [
     "FrameRate",
     "FrameStatistic",
     "FrameTimecode",
+    "NativeDetectorStatistic",
+    "NativeScene",
+    "NativeSceneConfig",
+    "NativeSceneResult",
+    "NativeSceneSample",
+    "NativeSceneStatistic",
     "NativeVideoConfig",
     "NativeVideoDiagnostics",
     "NativeVideoFrame",
@@ -82,6 +97,7 @@ __all__ = [
     "allocate_budget",
     "analyze_scenes",
     "benchmark_manifest",
+    "detect_native_scenes",
     "detect_scenes",
     "detect_shots",
     "detect_transitions",

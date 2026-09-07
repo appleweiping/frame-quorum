@@ -7,6 +7,10 @@ the cut frame indices, and one diagnostic for every input frame. Existing
 contracts; the new workflow adds independent detector policies and stricter
 first/final-scene bounds.
 
+For local video without extracting image files, use the
+[exact-PTS native scene workflow](native-scenes.md). It shares these detector
+kernels, retains native rational times, and adds explicit ensemble provenance.
+
 ```python
 from frame_quorum import DetectionConfig, detect_scenes, scan_frames
 

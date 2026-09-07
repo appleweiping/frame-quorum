@@ -4,6 +4,15 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Native scene coordination
+
+- Connect native PTS-preserving decoding to all five shared scene detectors,
+  with exact-position vote provenance and half-open selected-sample scenes.
+- Add immutable measurements, bounded offline analysis, explicit unknown final
+  endpoints, synchronous progress callbacks and the `native-scenes` JSON CLI.
+- Add generated VFR cut/fade demonstrations and independent coordinate,
+  algorithm-equivalence, callback cleanup and strict-result regression tests.
+
 ### Native video
 
 - Optional incremental PyAV local-file streams preserving integer PTS and

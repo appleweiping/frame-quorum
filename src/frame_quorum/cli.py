@@ -25,6 +25,7 @@ from .editing import render_edl, render_scene_timecodes
 from .errors import ConfigurationError, FrameQuorumError, OutputError
 from .exports import render_detection_csv
 from .models import AnimationConfig, ConcurrencyConfig, Frame, ScanConfig, SelectionConfig
+from .native_scenes import NativeSceneConfig, detect_native_scenes
 from .native_video import NativeVideoConfig, NativeVideoStream
 from .reporting import scan_manifest, selection_manifest, write_json
 from .representation import (
@@ -124,21 +125,32 @@ def build_parser() -> argparse.ArgumentParser:
     extract.set_defaults(handler=_handle_extract)
 
     native_scan = commands.add_parser("native-scan", help="stream exact-PTS video measurements as JSONL")
-    native_scan.add_argument("input", type=Path)
-    native_scan.add_argument(
-        "--start", type=_exact_seconds, help="inclusive presentation seconds, e.g. 1001/30000"
-    )
-    native_scan.add_argument("--end", type=_exact_seconds, help="exclusive presentation seconds")
-    native_scan.add_argument("--frame-step", type=int, default=1)
-    native_scan.add_argument(
-        "--video-stream", type=int, default=0, help="zero-based ordinal among video streams"
-    )
-    native_scan.add_argument("--max-frames", type=int, default=10_000)
-    native_scan.add_argument("--max-decoded-frames", type=int, default=100_000)
-    native_scan.add_argument("--max-source-bytes", type=int, default=1_000_000_000)
-    native_scan.add_argument("--max-frame-pixels", type=int, default=16_777_216)
-    native_scan.add_argument("--max-total-pixels", type=int, default=1_000_000_000)
+    _add_native_options(native_scan)
     native_scan.set_defaults(handler=_handle_native_scan)
+
+    native_scenes = commands.add_parser("native-scenes", help="analyze exact-PTS video scenes as JSON")
+    _add_native_options(native_scenes)
+    native_scenes.add_argument(
+        "--detectors",
+        nargs="+",
+        choices=("content", "luminance", "color", "adaptive", "threshold"),
+        default=["adaptive"],
+    )
+    native_scenes.add_argument("--threshold", type=float, default=0.30)
+    native_scenes.add_argument("--min-scene-frames", type=int, default=1, help="per-detector sample minimum")
+    native_scenes.add_argument("--minimum-votes", type=int, default=1)
+    native_scenes.add_argument(
+        "--min-scene-samples", type=int, default=1, help="final ensemble sample minimum"
+    )
+    native_scenes.add_argument("--window-radius", type=int, default=2)
+    native_scenes.add_argument("--adaptive-ratio", type=float, default=3.0)
+    native_scenes.add_argument("--min-content", type=float, default=0.15)
+    native_scenes.add_argument("--dark-threshold", type=float, default=0.05)
+    native_scenes.add_argument("--hysteresis", type=float, default=0.02)
+    native_scenes.add_argument("--min-dark-frames", type=int, default=2)
+    native_scenes.add_argument("--fade-bias", type=float, default=0.0)
+    native_scenes.add_argument("--include-final-fade", action="store_true")
+    native_scenes.set_defaults(handler=_handle_native_scenes)
 
     scenes = commands.add_parser("scenes", help="detect scene boundaries and export per-frame statistics")
     scenes.add_argument("input", type=Path)
@@ -169,6 +181,19 @@ def build_parser() -> argparse.ArgumentParser:
     scenes.add_argument("--drop-frame", action="store_true", help="use exact NTSC drop-frame labels")
     scenes.add_argument("--edl", action="store_true", help="also export a cuts-only single-reel video EDL")
     return parser
+
+
+def _add_native_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("input", type=Path)
+    parser.add_argument("--start", type=_exact_seconds, help="inclusive exact presentation seconds")
+    parser.add_argument("--end", type=_exact_seconds, help="exclusive exact presentation seconds")
+    parser.add_argument("--frame-step", type=int, default=1)
+    parser.add_argument("--video-stream", type=int, default=0, help="zero-based ordinal among video streams")
+    parser.add_argument("--max-frames", type=int, default=10_000)
+    parser.add_argument("--max-decoded-frames", type=int, default=100_000)
+    parser.add_argument("--max-source-bytes", type=int, default=1_000_000_000)
+    parser.add_argument("--max-frame-pixels", type=int, default=16_777_216)
+    parser.add_argument("--max-total-pixels", type=int, default=1_000_000_000)
 
 
 def _add_scan_options(parser: argparse.ArgumentParser) -> None:
@@ -289,8 +314,8 @@ def _exact_seconds(text: str) -> Fraction:
         raise argparse.ArgumentTypeError("time must be a bounded exact integer, decimal or fraction") from exc
 
 
-def _handle_native_scan(args: argparse.Namespace) -> int:
-    config = NativeVideoConfig(
+def _native_config(args: argparse.Namespace) -> NativeVideoConfig:
+    return NativeVideoConfig(
         video_stream=args.video_stream,
         start=args.start,
         end=args.end,
@@ -301,6 +326,40 @@ def _handle_native_scan(args: argparse.Namespace) -> int:
         max_frame_pixels=args.max_frame_pixels,
         max_total_pixels=args.max_total_pixels,
     )
+
+
+def _handle_native_scenes(args: argparse.Namespace) -> int:
+    detectors = tuple(
+        DetectionConfig(
+            detector=name,
+            threshold=args.threshold,
+            min_scene_frames=args.min_scene_frames,
+            window_radius=args.window_radius,
+            adaptive_ratio=args.adaptive_ratio,
+            min_content=args.min_content,
+            dark_threshold=args.dark_threshold,
+            hysteresis=args.hysteresis,
+            min_dark_frames=args.min_dark_frames,
+            fade_bias=args.fade_bias,
+            include_final_fade=args.include_final_fade,
+        )
+        for name in args.detectors
+    )
+    result = detect_native_scenes(
+        args.input,
+        NativeSceneConfig(
+            video=_native_config(args),
+            detectors=detectors,
+            minimum_votes=args.minimum_votes,
+            min_scene_samples=args.min_scene_samples,
+        ),
+    )
+    sys.stdout.write(json.dumps(result.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n")
+    return 0
+
+
+def _handle_native_scan(args: argparse.Namespace) -> int:
+    config = _native_config(args)
 
     def emit(record_type: str, data: dict[str, object]) -> None:
         sys.stdout.write(
