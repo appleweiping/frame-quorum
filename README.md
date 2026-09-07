@@ -83,7 +83,23 @@ integer PTS and rational time bases, exact presentation-time windows, keyframe
 seek/replay and lifetime work/output limits. The CLI emits measurement JSONL;
 require its terminal summary and inspect the status before treating an output
 prefix as complete. This is a local-file backend, not a native-code sandbox or
-an automatic video-to-scene/EDL conversion. See [contracts and limits](docs/native-video.md).
+an automatic CFR/EDL conversion. See [contracts and limits](docs/native-video.md).
+
+### Detect scenes directly from native video
+
+```bash
+frame-quorum native-scenes local.mkv --detectors adaptive luminance \
+  --minimum-votes 2 --min-scene-samples 2 --max-frames 5000
+python examples/native_scenes.py
+```
+
+The native scene workflow incrementally decodes, then applies the existing five
+detectors to bounded retained measurements (not prior RGB frames). The JSON report
+preserves exact native PTS, generation-local decode/sample mapping, each detector's
+raw/qualified candidates and aggregate voting decisions. Sample counts are not
+original-frame counts. A final time remains unknown at EOF or a count limit;
+it is never inferred from FPS. This is offline `O(samples × detectors)` analysis,
+not constant-memory online scene detection. See [native scene contracts](docs/native-scenes.md).
 
 ### Inspect an image sequence
 

@@ -191,6 +191,8 @@ missing/decreasing timestamps, limits, observed file mutation, failed setup,
 reentrancy, and each resource's close failure/retry. No downloaded fixture or
 trained model is used.
 
-This backend is not yet a streaming scene-manager integration, audio processor,
-clip exporter, live-source reader, GPU decoder, or codec compatibility benchmark.
+The [native scene workflow](native-scenes.md) now connects this backend to the
+five existing detectors using bounded offline measurements and exact PTS. This
+backend is not an online scene manager, audio processor, clip exporter,
+live-source reader, GPU decoder, or codec compatibility benchmark.
 The [whole-repository audit](parity-detection.md) keeps those gaps explicit.

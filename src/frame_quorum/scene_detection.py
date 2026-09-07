@@ -10,7 +10,7 @@ from typing import Literal
 
 from .errors import ConfigurationError
 from .metrics import content_distance
-from .models import Frame
+from .models import Frame, FrameMetrics
 from .scenes import Shot
 
 SceneDetectorName = Literal["content", "luminance", "color", "adaptive", "threshold"]
@@ -141,28 +141,15 @@ def detect_scenes(frames: Sequence[Frame], config: DetectionConfig | None = None
     content = [0.0] + [
         content_distance(frames[index - 1].metrics, frames[index].metrics) for index in range(1, len(frames))
     ]
-    scores, candidates = _candidates(frames, content, options)
+    scores, candidates = _candidates([frame.metrics for frame in frames], content, options)
     accepted: list[int] = []
     statistics: list[FrameStatistic] = []
-    previous = 0
+    decisions = _decisions(scores, candidates, options)
     for position, frame in enumerate(frames):
         candidate = position in candidates
-        reason = "below_threshold" if scores[position] is not None else "incomplete_window"
-        if options.detector == "threshold":
-            reason = "no_completed_fade"
-        if position == 0:
-            reason = "sequence_start"
-        kept = False
-        if candidate:
-            if position - previous < options.min_scene_frames:
-                reason = "short_previous_scene"
-            elif len(frames) - position < options.min_scene_frames:
-                reason = "short_final_scene"
-            else:
-                kept = True
-                reason = candidates[position]
-                accepted.append(position)
-                previous = position
+        kept, reason = decisions[position]
+        if kept:
+            accepted.append(position)
         statistics.append(
             FrameStatistic(
                 position,
@@ -210,11 +197,37 @@ def _validate_frames(frames: Sequence[Frame], maximum: int) -> None:
         raise ConfigurationError("last frame index leaves no signed-64 end index")
 
 
+def _decisions(
+    scores: Sequence[float | None], candidates: dict[int, str], config: DetectionConfig
+) -> list[tuple[bool, str]]:
+    """Shared sample-count policy, independent of image paths and time coordinates."""
+    decisions: list[tuple[bool, str]] = []
+    previous = 0
+    for position, score in enumerate(scores):
+        reason = "below_threshold" if score is not None else "incomplete_window"
+        if config.detector == "threshold":
+            reason = "no_completed_fade"
+        if position == 0:
+            reason = "sequence_start"
+        kept = False
+        if position in candidates:
+            if position - previous < config.min_scene_frames:
+                reason = "short_previous_scene"
+            elif len(scores) - position < config.min_scene_frames:
+                reason = "short_final_scene"
+            else:
+                kept, reason, previous = True, candidates[position], position
+        decisions.append((kept, reason))
+    return decisions
+
+
 def _candidates(
-    frames: Sequence[Frame],
+    metrics: Sequence[FrameMetrics],
     content: list[float],
     config: DetectionConfig,
 ) -> tuple[list[float | None], dict[int, str]]:
+    if not metrics:
+        return [], {}
     if config.detector == "adaptive":
         scores = _adaptive_scores(content, config.window_radius)
         return scores, {
@@ -225,27 +238,27 @@ def _candidates(
             and content[position] >= config.min_content
         }
     if config.detector == "threshold":
-        return [frame.metrics.luminance for frame in frames], _fade_candidates(frames, config)
+        return [item.luminance for item in metrics], _fade_candidates(metrics, config)
     distances = content
     if config.detector == "luminance":
         distances = [0.0] + [
-            abs(frames[position].metrics.luminance - frames[position - 1].metrics.luminance)
-            for position in range(1, len(frames))
+            abs(metrics[position].luminance - metrics[position - 1].luminance)
+            for position in range(1, len(metrics))
         ]
     elif config.detector == "color":
         distances = [0.0]
-        for left, right in pairwise(frames):
+        for left, right in pairwise(metrics):
             distances.append(
                 math.sqrt(
-                    (left.metrics.mean_red - right.metrics.mean_red) ** 2
-                    + (left.metrics.mean_green - right.metrics.mean_green) ** 2
-                    + (left.metrics.mean_blue - right.metrics.mean_blue) ** 2
+                    (left.mean_red - right.mean_red) ** 2
+                    + (left.mean_green - right.mean_green) ** 2
+                    + (left.mean_blue - right.mean_blue) ** 2
                 )
                 / math.sqrt(3.0)
             )
     return list(distances), {
         position: "distance_threshold"
-        for position in range(1, len(frames))
+        for position in range(1, len(metrics))
         if distances[position] >= config.threshold
     }
 
@@ -266,14 +279,14 @@ def _adaptive_scores(content: list[float], radius: int) -> list[float | None]:
     return scores
 
 
-def _fade_candidates(frames: Sequence[Frame], config: DetectionConfig) -> dict[int, str]:
+def _fade_candidates(metrics: Sequence[FrameMetrics], config: DetectionConfig) -> dict[int, str]:
     candidates: dict[int, str] = {}
     armed = False
     start: int | None = None
     dark_samples = 0
     release = config.dark_threshold + config.hysteresis
-    for position, frame in enumerate(frames):
-        luminance = frame.metrics.luminance
+    for position, item in enumerate(metrics):
+        luminance = item.luminance
         if luminance > release:
             if start is not None and dark_samples >= config.min_dark_frames:
                 boundary = start + math.floor((position - start) * (1 + config.fade_bias) / 2)
