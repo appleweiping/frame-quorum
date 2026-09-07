@@ -4,6 +4,16 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Native video
+
+- Optional incremental PyAV local-file streams preserving integer PTS and
+  rational time bases, owned RGB snapshots, exact presentation windows and
+  keyframe seek/replay with explicit generation-local indices.
+- Lifetime source/frame/pixel limits, strict single-owner lifecycle, denied
+  secondary protocol opens and honest cleanup-failure diagnostics with retry.
+- `native-scan` streaming measurement JSONL, an offline generated-video example,
+  real CFR/VFR/interframe codec tests and optional video coverage in CI.
+
 ### Exact timing and editing
 
 - Rational frame-rate and timecode coordinates with explicit rounding, NTSC

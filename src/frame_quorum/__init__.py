@@ -26,6 +26,14 @@ from .models import (
     SelectionConfig,
     SelectionResult,
 )
+from .native_video import (
+    NativeVideoConfig,
+    NativeVideoDiagnostics,
+    NativeVideoFrame,
+    NativeVideoMetadata,
+    NativeVideoStatus,
+    NativeVideoStream,
+)
 from .scanner import scan_frames
 from .scene_detection import (
     DetectionConfig,
@@ -56,6 +64,12 @@ __all__ = [
     "FrameRate",
     "FrameStatistic",
     "FrameTimecode",
+    "NativeVideoConfig",
+    "NativeVideoDiagnostics",
+    "NativeVideoFrame",
+    "NativeVideoMetadata",
+    "NativeVideoStatus",
+    "NativeVideoStream",
     "ScanConfig",
     "SceneAnalysis",
     "SceneDetectorName",

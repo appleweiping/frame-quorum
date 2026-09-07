@@ -40,6 +40,10 @@ directory / image
 - `benchmark.py` owns transparent baselines, label-free metrics, aggregation, raw-source and measured-record digests,
   runtime/scan provenance, and SVG output.
 - `video.py` is an optional subprocess boundary for monitored FFmpeg extraction; FFmpeg is not imported or bundled.
+- `native_video.py` is a separate optional in-process PyAV boundary: local-file
+  incremental decode, exact PTS/time-base snapshots, rational seek/filtering,
+  owned RGB bytes and explicit resource lifecycle. It is not an image-file
+  `Frame` converter or a native-memory sandbox. See [native video](native-video.md).
 - `cli.py` maps commands and flags to the public Python API.
 
 ## Measurement model
@@ -183,13 +187,22 @@ Potential optional adapters should produce normalized measurements without chang
 access implicit. Examples include semantic embeddings, optical-flow change, or domain-specific quality signals.
 Any adapter must expose its provenance and parameters in the manifest so decisions remain reproducible.
 
-Video decoding remains outside the core. The optional adapter emits an image sequence and timestamp rule so the
+Video decoding remains outside the image/selection core. The FFmpeg adapter emits an image sequence and timestamp rule so the
 scanner and selector remain unchanged. The FFmpeg adapter implements this boundary by staging a
 new PNG directory, enforcing frame, live generated-PNG byte, and FFmpeg subprocess-runtime caps, continuously draining
 bounded diagnostics, verifying the input snapshot before and after decoding, validating every output through the
 scanner, and publishing only a complete sequence. The subprocess timeout excludes hashing, version probing, and
 validation. The extraction manifest records the input SHA-256, decoder version, effective arguments, limits,
 byte-accounting scope, and result; codec-specific behavior remains external.
+
+The optional PyAV stream instead exposes native PTS and rational time bases
+without staging PNGs. Returned RGB snapshots have independent ownership and can
+be measured through the same metric functions. The decoder never substitutes an
+FPS-based coordinate for a missing PTS and does not quietly translate native VFR
+records into the existing floating-timestamp image-file schema. Its lifetime
+frame/pixel limits bound Python-visible work and results, not native probing,
+codec allocation or CPU. Native scene-coordinator integration remains separate
+work; callers currently consume the exact snapshots directly.
 
 ## Evaluation boundary
 
