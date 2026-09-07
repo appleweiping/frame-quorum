@@ -14,7 +14,8 @@ from .benchmark import (
     source_content_digest,
 )
 from .detectors import DetectorName, Transition, detect_transitions
-from .exports import render_decision_csv, write_decision_csv
+from .editing import render_edl, render_scene_timecodes
+from .exports import render_decision_csv, render_detection_csv, write_decision_csv
 from .models import (
     AnimationConfig,
     ConcurrencyConfig,
@@ -26,8 +27,16 @@ from .models import (
     SelectionResult,
 )
 from .scanner import scan_frames
+from .scene_detection import (
+    DetectionConfig,
+    DetectionResult,
+    FrameStatistic,
+    SceneDetectorName,
+    detect_scenes,
+)
 from .scenes import SceneAnalysis, Shot, allocate_budget, analyze_scenes, detect_shots
 from .selector import select_frames
+from .timecode import FrameRate, FrameTimecode
 from .video import VideoExtractionConfig, VideoExtractionResult, extract_video_frames, ffmpeg_available
 
 __all__ = [
@@ -37,13 +46,19 @@ __all__ = [
     "BenchmarkResult",
     "BenchmarkRun",
     "ConcurrencyConfig",
+    "DetectionConfig",
+    "DetectionResult",
     "DetectorName",
     "EvaluationMetrics",
     "Frame",
     "FrameDecision",
     "FrameMetrics",
+    "FrameRate",
+    "FrameStatistic",
+    "FrameTimecode",
     "ScanConfig",
     "SceneAnalysis",
+    "SceneDetectorName",
     "SelectionConfig",
     "SelectionResult",
     "Shot",
@@ -53,6 +68,7 @@ __all__ = [
     "allocate_budget",
     "analyze_scenes",
     "benchmark_manifest",
+    "detect_scenes",
     "detect_shots",
     "detect_transitions",
     "evaluate_selection",
@@ -60,6 +76,9 @@ __all__ = [
     "ffmpeg_available",
     "render_benchmark_svg",
     "render_decision_csv",
+    "render_detection_csv",
+    "render_edl",
+    "render_scene_timecodes",
     "run_benchmark",
     "scan_frames",
     "select_frames",

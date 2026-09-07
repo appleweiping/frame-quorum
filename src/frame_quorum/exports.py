@@ -8,6 +8,44 @@ from pathlib import Path
 
 from .errors import ConfigurationError
 from .models import SelectionResult
+from .scene_detection import DetectionResult
+
+
+def render_detection_csv(result: DetectionResult) -> str:
+    """Render all detector statistics, including suppressed boundary candidates."""
+
+    if not isinstance(result, DetectionResult):
+        raise ConfigurationError("result must be a DetectionResult")
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(
+        (
+            "position",
+            "frame_index",
+            "timestamp",
+            "content_score",
+            "luminance",
+            "detector_score",
+            "candidate",
+            "accepted",
+            "reason",
+        )
+    )
+    for item in result.statistics:
+        writer.writerow(
+            (
+                item.position,
+                item.frame_index,
+                item.timestamp,
+                item.content_score,
+                item.luminance,
+                item.detector_score,
+                str(item.candidate).lower(),
+                str(item.accepted).lower(),
+                item.reason,
+            )
+        )
+    return output.getvalue()
 
 
 def render_decision_csv(result: SelectionResult) -> str:
@@ -66,4 +104,4 @@ def write_decision_csv(result: SelectionResult, destination: str | Path) -> Path
     return path
 
 
-__all__ = ["render_decision_csv", "write_decision_csv"]
+__all__ = ["render_decision_csv", "render_detection_csv", "write_decision_csv"]

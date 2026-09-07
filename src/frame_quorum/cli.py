@@ -20,7 +20,9 @@ from .benchmark import (
 )
 from .contact_sheet import render_contact_sheet
 from .demo import create_demo_sequence
+from .editing import render_edl, render_scene_timecodes
 from .errors import ConfigurationError, FrameQuorumError, OutputError
+from .exports import render_detection_csv
 from .models import AnimationConfig, ConcurrencyConfig, Frame, ScanConfig, SelectionConfig
 from .reporting import scan_manifest, selection_manifest, write_json
 from .representation import (
@@ -30,7 +32,9 @@ from .representation import (
     budget_curve,
 )
 from .scanner import scan_frames
+from .scene_detection import DetectionConfig, detect_scenes
 from .selector import select_frames
+from .timecode import FrameRate
 from .video import VideoExtractionConfig, extract_video_frames
 
 
@@ -116,6 +120,35 @@ def build_parser() -> argparse.ArgumentParser:
     )
     extract.add_argument("--ffmpeg", default="ffmpeg", help="FFmpeg executable name or path")
     extract.set_defaults(handler=_handle_extract)
+
+    scenes = commands.add_parser("scenes", help="detect scene boundaries and export per-frame statistics")
+    scenes.add_argument("input", type=Path)
+    _add_scan_options(scenes)
+    _add_animation_options(scenes)
+    scenes.add_argument("--output-dir", "-o", type=Path, required=True)
+    scenes.add_argument(
+        "--detector", choices=("content", "luminance", "color", "adaptive", "threshold"), default="adaptive"
+    )
+    scenes.add_argument("--threshold", type=float, default=0.30, help="adjacent-distance threshold")
+    scenes.add_argument("--min-scene-frames", type=int, default=1)
+    scenes.add_argument("--window-radius", type=int, default=2)
+    scenes.add_argument("--adaptive-ratio", type=float, default=3.0)
+    scenes.add_argument("--min-content", type=float, default=0.15)
+    scenes.add_argument("--dark-threshold", type=float, default=0.05)
+    scenes.add_argument("--hysteresis", type=float, default=0.02)
+    scenes.add_argument("--min-dark-frames", type=int, default=2)
+    scenes.add_argument("--fade-bias", type=float, default=0.0)
+    scenes.add_argument("--include-final-fade", action="store_true")
+    scenes.add_argument(
+        "--max-frames", type=int, default=1_000_000, help="maximum measured frames accepted by detection"
+    )
+    scenes.set_defaults(handler=_handle_scenes)
+    scenes.add_argument(
+        "--timecode-rate",
+        help="exact CFR rate for timing exports, e.g. 30000/1001; overrides index timestamp rate",
+    )
+    scenes.add_argument("--drop-frame", action="store_true", help="use exact NTSC drop-frame labels")
+    scenes.add_argument("--edl", action="store_true", help="also export a cuts-only single-reel video EDL")
     return parser
 
 
@@ -369,6 +402,61 @@ def _handle_extract(args: argparse.Namespace) -> int:
         ),
     )
     _write_console(f"Extracted {result.frame_count} frames -> {result.output_dir}")
+    return 0
+
+
+def _handle_scenes(args: argparse.Namespace) -> int:
+    _require_output_outside_input(args.input, args.output_dir)
+    rate = None if args.timecode_rate is None else FrameRate.parse(args.timecode_rate)
+    if (args.drop_frame or args.edl) and rate is None:
+        raise ConfigurationError("--drop-frame and --edl require --timecode-rate")
+    if rate is not None:
+        if args.timestamp_mode != "index":
+            raise ConfigurationError("CFR timecode exports require index timestamps")
+        args.frame_rate = float(rate.fraction)
+    config = DetectionConfig(
+        detector=args.detector,
+        threshold=args.threshold,
+        min_scene_frames=args.min_scene_frames,
+        window_radius=args.window_radius,
+        adaptive_ratio=args.adaptive_ratio,
+        min_content=args.min_content,
+        dark_threshold=args.dark_threshold,
+        hysteresis=args.hysteresis,
+        min_dark_frames=args.min_dark_frames,
+        fade_bias=args.fade_bias,
+        include_final_fade=args.include_final_fade,
+        max_frames=args.max_frames,
+    )
+    config.validate()
+    frames = scan_frames(
+        args.input,
+        _scan_config(args),
+        animation=_animation_config(args),
+        concurrency=_concurrency_config(args),
+    )
+    result = detect_scenes(frames, config)
+    timing = None if rate is None else render_scene_timecodes(result.scenes, rate, drop_frame=args.drop_frame)
+    edl = (
+        render_edl(result.scenes, rate, drop_frame=args.drop_frame) if args.edl and rate is not None else None
+    )
+    output = args.output_dir.resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    report, statistics = output / "scenes.json", output / "statistics.csv"
+    with TemporaryDirectory(prefix=".frame-quorum-scenes-stage-", dir=output) as staging:
+        staged_report = Path(staging) / report.name
+        staged_stats = Path(staging) / statistics.name
+        write_json(result.serializable(), staged_report)
+        staged_stats.write_text(render_detection_csv(result), encoding="utf-8", newline="")
+        bundle = [(staged_stats, statistics)]
+        for name, content in (("timecodes.csv", timing), ("scenes.edl", edl)):
+            if content is not None:
+                staged = Path(staging) / name
+                staged.write_text(content, encoding="utf-8", newline="")
+                bundle.append((staged, output / name))
+        bundle.append((staged_report, report))
+        _commit_bundle(tuple(bundle))
+    _write_console(f"Detected {len(result.scenes)} scenes from {len(frames)} frames -> {report}")
     return 0
 
 

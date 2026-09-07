@@ -4,7 +4,23 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
-No unreleased changes.
+### Exact timing and editing
+
+- Rational frame-rate and timecode coordinates with explicit rounding, NTSC
+  drop-frame counter parsing/formatting, elapsed timestamps and PTS quantization.
+- Exact scene-timing CSV and cuts-only single-reel EDL exports in the scene CLI;
+  bounded metadata and exclusive out-points with no silent day wrapping.
+
+### Added
+
+- Centered adaptive scene detection with an absolute content floor, finite contrast
+  ratios and explicit incomplete-window behavior.
+- Stateful threshold fade detection with hysteresis, minimum dark samples, bias,
+  final-fade policy and first/final scene length checks.
+- `detect_scenes`, typed detection settings/results/statistics, and the `scenes`
+  CLI producing staged scene JSON and per-frame CSV diagnostics.
+- Executable synthetic cut/fade examples and a pinned whole-repository reference
+  gap audit covering detector, decoder, timecode, splitting and export surfaces.
 
 ## [0.4.0] - 2026-09-07
 
