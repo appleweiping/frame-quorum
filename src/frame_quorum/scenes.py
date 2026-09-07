@@ -61,11 +61,7 @@ def detect_shots(
 
     if not isinstance(frames, Sequence) or not frames:
         raise ConfigurationError("frames must be a non-empty sequence")
-    if (
-        not isinstance(threshold, (int, float))
-        or isinstance(threshold, bool)
-        or not 0 <= threshold <= 1
-    ):
+    if not isinstance(threshold, (int, float)) or isinstance(threshold, bool) or not 0 <= threshold <= 1:
         raise ConfigurationError("threshold must be between zero and one")
     if type(min_frames) is not int or min_frames < 1:
         raise ConfigurationError("min_frames must be a positive integer")
