@@ -274,6 +274,64 @@ through 3.14, plus Windows with Python 3.12. The coverage floor is 94% with bran
 For regression research, regenerate the checked-in benchmark and run the machine-readable selection-only performance
 protocol documented in [benchmarks/README.md](benchmarks/README.md).
 
+## What the selection missed
+
+The manifest says why each frame was kept or dropped, which answers "was this
+decision defensible" and not "did the result miss anything". A budget of eight
+can be filled with eight defensible choices and still leave a whole event
+unrepresented.
+
+```console
+frame-quorum coverage frames/ --budget 6 --budgets 2 4 6 8 12 16
+```
+
+```
+kept 6 of 18; worst gap 0.274, mean 0.172, 0% of dropped frames within 0.035
+  frames 1-4 are represented no closer than 0.274
+  frames 11-14 are represented no closer than 0.189
+
+ budget  kept   worst    mean
+      2     2   0.298   0.191
+      4     4   0.274   0.168
+      6     6   0.274   0.172
+      8     8   0.223   0.166
+     12    12   0.203   0.154
+     16    16   0.203   0.190
+  the worst gap stops improving at a budget of 12
+```
+
+Representation error is the distance from each dropped frame to the nearest one
+that was kept, in the same content metric the selector already uses to detect
+duplicates. Using a second notion of "similar" would let a selection look well
+represented under one measure while the selector rejected duplicates under
+another, and the disagreement would be invisible.
+
+Consecutive under-represented frames are reported as one gap. A missed event
+shows up as a stretch of neighbouring frames, all far from anything kept, and
+listing them one by one would describe a single absence many times.
+
+### Choosing a budget
+
+The budget is the one setting picked with no basis, and the curve is the basis.
+A worst gap that keeps falling as frames are added says the budget is binding;
+one that flattens says it is not, and the extra frames are being spent on
+moments already covered. A curve still improving at its largest budget reports
+no knee rather than naming the last point, which would invent a plateau.
+
+The curve reports frames *kept*, not frames asked for. A budget past the length
+of the sequence, or one the minimum gap cuts short, selects fewer than it
+requested, and reporting the request would make the curve look flat for the
+wrong reason.
+
+### Reading the demo numbers
+
+On the bundled demo every frame is a distinct scene, so at the selector's own
+duplicate threshold no dropped frame is covered at any budget and the covered
+column reads zero throughout. That is a fact about the sequence rather than
+about the selection: a budget of six cannot represent eighteen distinct moments,
+and the worst gap is then a statement about the budget. `--covered-distance`
+sets the threshold when a looser notion of "close enough" is wanted.
+
 ## Limitations
 
 - A perceptual change is not necessarily an important event; the tool does not recognize people or objects.

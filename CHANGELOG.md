@@ -6,6 +6,23 @@ All notable changes are documented here. The project follows semantic versioning
 
 ### Added
 
+- `frame-quorum coverage`: measure how well a selection represents the frames it dropped. The
+  manifest already said why each frame was kept or rejected, which answers whether a decision
+  was defensible and not whether the result missed anything.
+- Representation error is the distance from each dropped frame to the nearest kept one, in the
+  same content metric the selector uses to detect duplicates. A second notion of "similar" would
+  let a selection look well represented under one measure while duplicates were rejected under
+  another, and the disagreement would be invisible.
+- Consecutive under-represented frames are reported as one gap, since a missed event appears as
+  a stretch of neighbours and listing them separately describes one absence many times.
+- `--budgets` re-selects at several budgets and reports what each represents. The budget is the
+  one setting chosen with no basis; a worst gap that keeps falling says it is binding, and one
+  that flattens says the extra frames are being spent on moments already covered. A curve still
+  improving at its largest budget reports no knee rather than naming the last point.
+- The curve reports frames kept rather than frames requested, so a budget past the length of the
+  sequence does not look like a plateau.
+- `frame_quorum.representation` as a Python API: `analyze_representation` and `budget_curve`.
+
 - Add a deterministic experiment runner comparing Frame Quorum with time-uniform, change-peak, and repeated seeded-random
   baselines under shared hard constraints.
 - Add normalized quality, content coverage, temporal coverage, transition coverage, non-redundancy, and explicitly
