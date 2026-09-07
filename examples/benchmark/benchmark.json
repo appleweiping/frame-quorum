@@ -8,7 +8,7 @@
     "measured_record_fingerprint_algorithm": "SHA-256 over canonical paths, timestamps, dimensions, byte counts, and lossy image metrics",
     "provenance": {
       "software": {
-        "frame_quorum": "0.1.0",
+        "frame_quorum": "0.2.0",
         "python": "3.11.2",
         "pillow": "12.3.0"
       },

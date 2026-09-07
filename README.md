@@ -51,10 +51,12 @@ the same budget, spacing, duplicate, and endpoint constraints:
 frame-quorum benchmark ./frames --output-dir ./experiment --budget 8 --random-trials 32
 ```
 
-The command writes a machine-readable `benchmark.json` and an SVG comparison chart. The repository includes an
-exactly reproducible [benchmark report](examples/benchmark/benchmark.json),
+The command writes a machine-readable `benchmark.json` and an SVG comparison chart. The repository includes a
+checked-in [benchmark report](examples/benchmark/benchmark.json),
 [visual result](examples/benchmark/benchmark.svg), metric definitions, baseline protocol, and honest evidence limits
-in [Reproducible experiments](docs/experiments.md). These label-free diagnostics measure representation and coverage;
+in [Reproducible experiments](docs/experiments.md). Its algorithmic fields reproduce exactly from the fixture;
+runtime-version fields intentionally describe the executing environment. These label-free diagnostics measure representation and
+coverage;
 they do not measure downstream VLM understanding or semantic accuracy. Every seeded-random trial is retained and
 reported as a distribution instead of selecting the best trial.
 
@@ -269,10 +271,14 @@ python -m pytest --cov
 ```
 
 Tests synthesize their own images and make no network requests. CI runs the full suite on Linux with Python 3.11
-through 3.14, plus Windows with Python 3.12. The coverage floor is 94% with branch coverage enabled.
+through 3.14, plus Windows with Python 3.12. The coverage floor is 95% with branch coverage enabled.
 
 For regression research, regenerate the checked-in benchmark and run the machine-readable selection-only performance
 protocol documented in [benchmarks/README.md](benchmarks/README.md).
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [GOVERNANCE.md](GOVERNANCE.md), the
+[release verification guide](docs/releases.md), and [citation metadata](CITATION.cff) for the
+project's public maintenance and release contracts.
 
 ## What the selection missed
 
@@ -362,6 +368,10 @@ Frame Quorum is local-only and does not transmit images. Treat manifests as pote
 names, dimensions, timestamps, and image statistics may reveal information. Review [SECURITY.md](SECURITY.md)
 before processing untrusted or confidential files. Selection output must be outside the scanned input directory,
 so generated reports cannot become inputs on a later run.
+
+## Companion repositories
+
+Frame Quorum is one independent part of a small multimodal tooling suite. [Payload Palette](https://github.com/appleweiping/payload-palette) validates request media, [Evidence Braid](https://github.com/appleweiping/evidence-braid) fuses evidence under explicit policies, [Graph Sail](https://github.com/appleweiping/graph-sail) plans heterogeneous DAGs, and [Stream Quilt](https://github.com/appleweiping/stream-quilt) aligns event streams. The repositories have separate contracts and release cycles; no runtime dependency is implied.
 
 ## License
 

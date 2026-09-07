@@ -1,4 +1,4 @@
-"""Regenerate the checked-in deterministic benchmark artifacts."""
+"""Regenerate algorithmic benchmark artifacts with explicit runtime provenance."""
 
 from pathlib import Path
 

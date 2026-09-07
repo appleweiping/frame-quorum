@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import replace
 from io import BytesIO
@@ -61,6 +62,9 @@ def test_extract_publishes_valid_sequence_atomically(tmp_path: Path, monkeypatch
     assert metadata["ffmpeg"]["version"] == "ffmpeg version test-1.0"
     assert metadata["limits"]["max_output_bytes_scope"].startswith("generated PNG")
     assert metadata["limits"]["timeout_scope"] == "FFmpeg subprocess runtime only"
+    png_bytes = sum(path.stat().st_size for path in output.glob("*.png"))
+    assert result.total_output_bytes == png_bytes
+    assert sum(path.stat().st_size for path in output.iterdir()) > result.total_output_bytes
     assert not list(tmp_path.glob(".frame-quorum-extract-*"))
 
 
@@ -118,12 +122,21 @@ def test_extract_rejects_input_replaced_while_ffmpeg_runs(
 ) -> None:
     source = _video(tmp_path)
     output = tmp_path / "frames"
+    initial = source.stat()
 
     def replace_input(
         command: list[str], stage: Path, options: VideoExtractionConfig
     ) -> video_module._ProcessOutcome:
         outcome = _successful_ffmpeg(command, stage, options)
         source.write_bytes(source.read_bytes()[::-1])
+        os.utime(source, ns=(initial.st_atime_ns, initial.st_mtime_ns))
+        mutated = source.stat()
+        assert (mutated.st_dev, mutated.st_ino, mutated.st_size, mutated.st_mtime_ns) == (
+            initial.st_dev,
+            initial.st_ino,
+            initial.st_size,
+            initial.st_mtime_ns,
+        )
         return outcome
 
     monkeypatch.setattr(video_module, "_execute_ffmpeg", replace_input)

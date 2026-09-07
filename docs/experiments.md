@@ -44,14 +44,15 @@ when comparing methods because the equal weighting is a declared policy choice.
 
 ```bash
 python examples/create_demo.py
-python examples/run_benchmark.py
-git diff --exit-code -- examples/benchmark
+python -m pytest tests/test_benchmark.py -k checked_in_benchmark_matches_current_protocol
 ```
 
 The algorithmic fields in the resulting [JSON report](../examples/benchmark/benchmark.json) and
 [SVG chart](../examples/benchmark/benchmark.svg) are deterministic. Runtime version fields deliberately describe
-the current environment. Tests normalize those fields, regenerate the report from the checked-in frames, and compare
-the remaining parsed content exactly.
+the environment in which the checked-in artifact was generated. The verification test normalizes only those declared
+runtime fields, recomputes the report from the checked-in frames, compares every remaining parsed field exactly, and
+compares the rendered SVG byte for byte. Run `python examples/run_benchmark.py` only when intentionally refreshing the
+checked-in artifacts and their recorded provenance.
 The fixture contains controlled color phases, motion, added objects, repeated scene structure, and increasing detail.
 
 The checked-in 18-frame, six-selection result is:

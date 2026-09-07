@@ -4,10 +4,12 @@ Versioned Frame Quorum source distributions and wheels are published on the repo
 [GitHub Releases](https://github.com/appleweiping/frame-quorum/releases) page. The project is not
 claiming a package index release unless that index is linked from this repository.
 
-The release workflow runs only for a `vX.Y.Z` tag and refuses to publish when the tag,
-`pyproject.toml`, and the package's exported version disagree. It reruns lint, formatting, and
-tests; builds a source distribution and wheel; checks package metadata; installs the wheel in a
-fresh environment; and publishes a `SHA256SUMS` file.
+The release workflow runs only for a `vX.Y.Z` tag on `main` whose cross-platform `CI gate` and
+CodeQL analysis already succeeded. It refuses to publish when the tag, `pyproject.toml`, and the package's exported version
+disagree. A pinned `uv` binary synchronizes the frozen `uv.lock`, including the exact build backend
+and its transitive dependencies. The workflow reruns lint, formatting, and tests, builds a source
+distribution and wheel without a second dependency resolution, checks package metadata, installs
+the wheel in a fresh environment, and publishes `SHA256SUMS`.
 
 Download and verify one release with:
 

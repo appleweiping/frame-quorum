@@ -4,6 +4,8 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-07
+
 ### Added
 
 - `frame-quorum coverage`: measure how well a selection represents the frames it dropped. The
@@ -50,8 +52,22 @@ All notable changes are documented here. The project follows semantic versioning
   zone as UTC. Unset placeholder tags are skipped; populated but unreadable datetimes and offsets are rejected
   rather than replaced by a weaker source.
 
+### Changed
+
+- CI and tagged releases now consume the frozen dependency lock with pinned automation actions;
+  publishing requires successful cross-platform tests and CodeQL, uses reproducible archive
+  timestamps, emits checksums and provenance, and refuses to replace an existing release asset.
+- The bundled benchmark now records the current package version, and its documented verification
+  normalizes only declared runtime provenance while comparing every algorithmic JSON field and the
+  rendered SVG exactly.
+
 ### Fixed
 
+- Representation and budget-curve records now validate direct construction and
+  `dataclasses.replace()`, defensively snapshot bounded collections, and reject infinite budget
+  iterables before unbounded materialization.
+- Representation analysis revalidates a supplied selection before reading any of its fields, so a
+  forged or forcibly mutated result fails with the documented configuration error.
 - Validate identifier, count, dimension, and integer-valued continuous inputs against explicit signed or unsigned
   64-bit bounds before selection, rendering, formatting, or JSON serialization; finite floating-point spellings of
   continuous settings retain their original domain limits.

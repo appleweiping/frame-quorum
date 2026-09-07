@@ -3,7 +3,7 @@ message: "If you use this software, cite the versioned release you evaluated."
 title: "Frame Quorum"
 type: software
 version: 0.2.0
-date-released: 2026-09-01
+date-released: 2026-09-07
 authors:
   - family-names: "appleweiping"
 repository-code: "https://github.com/appleweiping/frame-quorum"

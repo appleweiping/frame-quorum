@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,13 @@ from frame_quorum.errors import ConfigurationError
 from frame_quorum.models import Frame, ScanConfig, SelectionConfig
 from frame_quorum.representation import (
     DEFAULT_COVERED_DISTANCE,
+    MAX_BUDGET_POINTS,
     MAX_REPORTED_GAPS,
+    BudgetCurve,
+    BudgetPoint,
+    FrameRepresentation,
+    RepresentationGap,
+    RepresentationReport,
     analyze_representation,
     budget_curve,
 )
@@ -140,9 +147,12 @@ def test_an_out_of_range_threshold_is_refused(frames: tuple[Frame, ...], distanc
 
 
 def test_an_empty_selection_cannot_represent_anything(frames: tuple[Frame, ...]) -> None:
-    from dataclasses import replace
-
-    result = replace(select_frames(frames, SelectionConfig(budget=3)), selected_indices=())
+    selected = select_frames(frames, SelectionConfig(budget=3))
+    decisions = tuple(
+        replace(decision, selected=False, rank=None, nearest_selected_index=None)
+        for decision in selected.decisions
+    )
+    result = replace(selected, selected_indices=(), decisions=decisions)
     with pytest.raises(ConfigurationError, match="cannot represent"):
         analyze_representation(result)
 
@@ -229,6 +239,200 @@ def test_a_report_serializes(frames: tuple[Frame, ...]) -> None:
 def test_the_default_threshold_matches_the_selectors_own(frames: tuple[Frame, ...]) -> None:
     # A frame the selector would call a duplicate is one this calls covered.
     assert SelectionConfig().duplicate_threshold == DEFAULT_COVERED_DISTANCE
+
+
+def test_representation_records_reject_impossible_direct_construction() -> None:
+    with pytest.raises(ConfigurationError, match="own selected representative"):
+        FrameRepresentation(index=2, relative_path="2.png", nearest_index=2, distance=0.1)
+    with pytest.raises(ConfigurationError, match="inside the gap"):
+        RepresentationGap(start_index=3, end_index=5, worst_index=6, worst_distance=0.4)
+    with pytest.raises(ConfigurationError, match="cannot exceed its budget"):
+        BudgetPoint(
+            budget=2,
+            selected=3,
+            worst_distance=0.4,
+            mean_distance=0.2,
+            covered_fraction=0.5,
+        )
+
+    with pytest.raises(ConfigurationError, match="path"):
+        FrameRepresentation(index=2, relative_path="", nearest_index=1, distance=0.1)
+    with pytest.raises(ConfigurationError, match="finite number"):
+        FrameRepresentation(index=2, relative_path="2.png", nearest_index=1, distance=float("nan"))
+    with pytest.raises(ConfigurationError, match="precede"):
+        RepresentationGap(start_index=5, end_index=3, worst_index=4, worst_distance=0.4)
+    with pytest.raises(ConfigurationError, match="worst distance"):
+        BudgetPoint(2, 1, 0.2, 0.3, 0.5)
+
+
+def test_report_rejects_forged_counts_types_and_aggregates() -> None:
+    worst = FrameRepresentation(1, "1.png", 0, 0.6)
+    gap = RepresentationGap(1, 1, 1, 0.6)
+    report = RepresentationReport(1, 1, 0.1, 0.6, 0.6, 0.0, (gap,), (worst,))
+
+    with pytest.raises(ConfigurationError, match="selected frame count"):
+        replace(report, selected=0)
+    with pytest.raises(ConfigurationError, match="mean representation"):
+        replace(report, mean_distance=0.7)
+    with pytest.raises(ConfigurationError, match="RepresentationGap"):
+        replace(report, gaps=(worst,))  # type: ignore[arg-type]
+    with pytest.raises(ConfigurationError, match="FrameRepresentation"):
+        replace(report, worst_frames=(gap,))  # type: ignore[arg-type]
+    with pytest.raises(ConfigurationError, match="gap cannot exceed"):
+        replace(report, worst_distance=0.55, mean_distance=0.5)
+    with pytest.raises(ConfigurationError, match="whole number"):
+        replace(report, covered_fraction=0.25)
+    with pytest.raises(ConfigurationError, match="without dropped frames"):
+        replace(report, dropped=0)
+
+
+def test_report_gaps_account_for_each_uncovered_frame_once() -> None:
+    worst = (
+        FrameRepresentation(1, "1.png", 0, 0.6),
+        FrameRepresentation(2, "2.png", 0, 0.5),
+    )
+    with pytest.raises(ConfigurationError, match="account for every uncovered"):
+        RepresentationReport(
+            selected=1,
+            dropped=2,
+            covered_distance=0.1,
+            worst_distance=0.6,
+            mean_distance=0.55,
+            covered_fraction=0.0,
+            gaps=(RepresentationGap(1, 1, 1, 0.6),),
+            worst_frames=worst,
+        )
+
+
+def test_report_rejects_overlapping_gaps_and_incomplete_worst_list() -> None:
+    worst = FrameRepresentation(1, "1.png", 0, 0.6)
+    with pytest.raises(ConfigurationError, match="ordered and non-overlapping"):
+        RepresentationReport(
+            selected=1,
+            dropped=2,
+            covered_distance=0.1,
+            worst_distance=0.6,
+            mean_distance=0.55,
+            covered_fraction=0.0,
+            gaps=(RepresentationGap(1, 1, 1, 0.6), RepresentationGap(1, 2, 1, 0.6)),
+            worst_frames=(worst, FrameRepresentation(2, "2.png", 0, 0.5)),
+        )
+    with pytest.raises(ConfigurationError, match="2 worst frames"):
+        RepresentationReport(1, 2, 0.1, 0.6, 0.55, 0.0, (RepresentationGap(1, 2, 1, 0.6),), (worst,))
+
+
+def test_report_replace_rechecks_cross_record_invariants(frames: tuple[Frame, ...]) -> None:
+    report = report_for(frames, 6)
+    assert report.gaps
+    with pytest.raises(ConfigurationError, match="gap presence"):
+        replace(report, covered_fraction=1.0)
+    with pytest.raises(ConfigurationError, match="ordered by distance"):
+        replace(report, worst_frames=tuple(reversed(report.worst_frames)))
+
+
+def test_budget_curve_snapshots_and_validates_programmatic_points() -> None:
+    first = BudgetPoint(1, 1, 0.5, 0.4, 0.0)
+    second = BudgetPoint(2, 2, 0.3, 0.2, 0.5)
+    caller_owned = [first, second]
+    curve = BudgetCurve(points=caller_owned, covered_distance=0.1)  # type: ignore[arg-type]
+    caller_owned.clear()
+    assert curve.points == (first, second)
+    with pytest.raises(ConfigurationError, match="unique increasing"):
+        replace(curve, points=(second, first))
+    with pytest.raises(ConfigurationError, match="knee tolerance"):
+        curve.knee(float("nan"))
+
+
+def test_reports_and_curves_deep_snapshot_nested_records() -> None:
+    worst = FrameRepresentation(1, "1.png", 0, 0.6)
+    gap = RepresentationGap(1, 1, 1, 0.6)
+    report = RepresentationReport(1, 1, 0.1, 0.6, 0.6, 0.0, (gap,), (worst,))
+    point = BudgetPoint(1, 1, 0.5, 0.4, 0.0)
+    curve = BudgetCurve((point,), 0.1)
+
+    object.__setattr__(worst, "distance", float("nan"))
+    object.__setattr__(gap, "worst_distance", float("nan"))
+    object.__setattr__(point, "worst_distance", float("nan"))
+
+    assert report.as_dict()["worst_distance"] == 0.6
+    assert curve.as_dict()["points"][0]["worst_distance"] == 0.5
+
+
+def test_serialization_revalidates_nested_records_after_forced_mutation() -> None:
+    worst = FrameRepresentation(1, "1.png", 0, 0.6)
+    gap = RepresentationGap(1, 1, 1, 0.6)
+    report = RepresentationReport(1, 1, 0.1, 0.6, 0.6, 0.0, (gap,), (worst,))
+    curve = BudgetCurve((BudgetPoint(1, 1, 0.5, 0.4, 0.0),), 0.1)
+
+    object.__setattr__(report.worst_frames[0], "distance", float("nan"))
+    with pytest.raises(ConfigurationError, match="finite number"):
+        report.as_dict()
+
+    object.__setattr__(curve.points[0], "budget", 0)
+    with pytest.raises(ConfigurationError, match="between 1"):
+        curve.as_dict()
+
+
+def test_serialization_rejects_forced_unbounded_outer_collections() -> None:
+    report = RepresentationReport(1, 0, 0.1, 0.0, 0.0, 1.0, (), ())
+    curve = BudgetCurve((BudgetPoint(1, 1, 0.0, 0.0, 1.0),), 0.1)
+
+    object.__setattr__(report, "gaps", itertools.repeat(RepresentationGap(1, 1, 1, 0.6)))
+    with pytest.raises(ConfigurationError, match="must be a tuple"):
+        report.as_dict()
+
+    object.__setattr__(curve, "points", itertools.repeat(BudgetPoint(1, 1, 0.0, 0.0, 1.0)))
+    with pytest.raises(ConfigurationError, match="must be a tuple"):
+        curve.as_dict()
+
+
+def test_budget_curve_rejects_cross_point_regressions() -> None:
+    first = BudgetPoint(1, 1, 0.5, 0.4, 0.2)
+    with pytest.raises(ConfigurationError, match="selected frame counts"):
+        BudgetCurve((BudgetPoint(2, 2, 0.5, 0.4, 0.2), BudgetPoint(3, 1, 0.4, 0.3, 0.3)), 0.1)
+    with pytest.raises(ConfigurationError, match="worst representation"):
+        BudgetCurve((first, BudgetPoint(2, 2, 0.6, 0.4, 0.3)), 0.1)
+    with pytest.raises(ConfigurationError, match="covered fraction"):
+        BudgetCurve((first, BudgetPoint(2, 2, 0.4, 0.3, 0.1)), 0.1)
+
+
+def test_budget_curve_rejects_empty_wrong_and_non_iterable_points() -> None:
+    with pytest.raises(ConfigurationError, match="at least one point"):
+        BudgetCurve((), 0.1)
+    with pytest.raises(ConfigurationError, match="iterable of records"):
+        BudgetCurve("not-points", 0.1)  # type: ignore[arg-type]
+    with pytest.raises(ConfigurationError, match="must be iterable"):
+        BudgetCurve(7, 0.1)  # type: ignore[arg-type]
+    with pytest.raises(ConfigurationError, match="BudgetPoint"):
+        BudgetCurve((object(),), 0.1)  # type: ignore[arg-type]
+
+
+def test_budget_iterables_are_bounded_before_materialization(frames: tuple[Frame, ...]) -> None:
+    with pytest.raises(ConfigurationError, match=str(MAX_BUDGET_POINTS)):
+        budget_curve(frames, SelectionConfig(), itertools.repeat(1))
+    with pytest.raises(ConfigurationError, match="integer"):
+        budget_curve(frames, SelectionConfig(), [True])
+    with pytest.raises(ConfigurationError, match="SelectionConfig"):
+        budget_curve(frames, object(), [1])  # type: ignore[arg-type]
+    with pytest.raises(ConfigurationError, match="tuple of Frame"):
+        budget_curve(list(frames), SelectionConfig(), [1])  # type: ignore[arg-type]
+    with pytest.raises(ConfigurationError, match="covered_distance"):
+        budget_curve(frames, SelectionConfig(), [1], covered_distance=float("inf"))
+
+
+def test_representation_requires_a_selection_result() -> None:
+    with pytest.raises(ConfigurationError, match="SelectionResult"):
+        analyze_representation(object())  # type: ignore[arg-type]
+
+
+def test_representation_revalidates_the_result_before_reading_its_fields(
+    frames: tuple[Frame, ...],
+) -> None:
+    result = select_frames(frames, SelectionConfig(budget=3))
+    object.__setattr__(result, "frames", itertools.repeat(frames[0]))
+
+    with pytest.raises(ConfigurationError, match="frames must be a tuple"):
+        analyze_representation(result)
 
 
 # ---------------------------------------------------------------------------

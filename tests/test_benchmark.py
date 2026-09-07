@@ -415,7 +415,7 @@ def test_quality_and_runtime_regression_on_medium_sequence() -> None:
     assert all(0 <= value <= 1 for item in report["aggregates"] for value in item["metrics_mean"].values())
 
 
-def test_checked_in_benchmark_matches_current_protocol() -> None:
+def test_checked_in_benchmark_matches_current_protocol(tmp_path: Path) -> None:
     repository = Path(__file__).parents[1]
     scan_config_path = repository / "examples" / "output" / "frames"
     scan_config = ScanConfig()
@@ -433,3 +433,6 @@ def test_checked_in_benchmark_matches_current_protocol() -> None:
     actual = benchmark_manifest(result)
     expected["protocol"]["provenance"]["software"] = actual["protocol"]["provenance"]["software"]
     assert actual == expected
+    generated_svg = render_benchmark_svg(result, tmp_path / "benchmark.svg")
+    checked_svg = repository / "examples" / "benchmark" / "benchmark.svg"
+    assert generated_svg.read_bytes() == checked_svg.read_bytes()
