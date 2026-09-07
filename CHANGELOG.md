@@ -4,6 +4,17 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+_The next release is prepared from the 0.3.0 expansion below._
+
+## [0.3.0] - 2026-09-07
+
+### Added
+
+- Added deterministic shot-boundary analysis based on representation distance,
+  plus per-shot frame-budget allocation with explicit short-budget behavior.
+  The API reports boundaries and allocation diagnostics without claiming
+  semantic scene understanding.
+
 ## [0.2.0] - 2026-09-07
 
 ### Added

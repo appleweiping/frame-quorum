@@ -23,6 +23,9 @@ request, or hidden inference step. Every selected and rejected frame receives a 
 - **Portable:** Python 3.11+ and Pillow are sufficient; input can be PNG, JPEG, WebP, BMP, or TIFF.
 - **Reproducible:** discovery, scoring, tie-breaking, JSON layout, and the included demo are deterministic.
 - **Bounded presentation:** metric sampling and contact-sheet canvas size have explicit memory guards.
+- **Shot analysis:** `analyze_scenes()` detects representation-level shot boundaries and allocates a
+  selection budget across shots deterministically; it is an auditable pre-selection signal, not a
+  semantic scene classifier.
 
 ## Quick start
 

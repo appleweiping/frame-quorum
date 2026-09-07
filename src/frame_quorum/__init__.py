@@ -18,11 +18,13 @@ from .models import (
     ConcurrencyConfig,
     Frame,
     FrameDecision,
+    FrameMetrics,
     ScanConfig,
     SelectionConfig,
     SelectionResult,
 )
 from .scanner import scan_frames
+from .scenes import SceneAnalysis, Shot, allocate_budget, analyze_scenes, detect_shots
 from .selector import select_frames
 from .video import VideoExtractionConfig, VideoExtractionResult, extract_video_frames, ffmpeg_available
 
@@ -36,12 +38,18 @@ __all__ = [
     "EvaluationMetrics",
     "Frame",
     "FrameDecision",
+    "FrameMetrics",
     "ScanConfig",
+    "SceneAnalysis",
     "SelectionConfig",
     "SelectionResult",
+    "Shot",
     "VideoExtractionConfig",
     "VideoExtractionResult",
+    "allocate_budget",
+    "analyze_scenes",
     "benchmark_manifest",
+    "detect_shots",
     "evaluate_selection",
     "extract_video_frames",
     "ffmpeg_available",
