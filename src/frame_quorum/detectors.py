@@ -1,9 +1,9 @@
 """Multiple deterministic representation-level transition detectors.
 
 The production selector works on frame representations rather than decoded
-video semantics.  This module makes that boundary explicit while exposing a
-small detector family comparable to the content/adaptive/threshold choices in
-larger scene-analysis tools.
+video semantics. This module preserves the original adjacent-distance API.
+Stateful fade detection, adaptive contrast, full scene partitions and statistics
+are provided by :mod:`frame_quorum.scene_detection`.
 """
 
 from __future__ import annotations
@@ -47,8 +47,8 @@ def detect_transitions(
 ) -> tuple[Transition, ...]:
     """Return boundaries whose selected representation distance crosses a threshold.
 
-    ``content`` combines hash, RGB and luminance distance; ``luminance`` is
-    useful for fades; ``color`` isolates palette changes in otherwise stable
+    ``content`` combines hash, RGB and luminance distance; ``luminance`` measures
+    adjacent brightness changes; ``color`` isolates palette changes in otherwise stable
     structure.  Inputs are validated and sorted by their supplied order only:
     callers must provide the same ordered sequence used by selection.
     """

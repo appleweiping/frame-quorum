@@ -28,6 +28,10 @@ directory / image
 - `timestamps.py` owns all conversions from index, filename, modification time, or EXIF capture time to a
   floating-point coordinate.
 - `metrics.py` implements bounded-resolution Pillow measurements and the composite content distance.
+- `scene_detection.py` produces offline scene partitions, using centered adaptive
+  contrast, fade-through-dark state, or adjacent-distance detectors. Every proposed
+  boundary retains acceptance diagnostics; work and result memory are linear in
+  the number of supplied frames. See [scene detection](scene-detection.md).
 - `selector.py` validates the sequence, applies hard constraints, chooses frames, and explains every decision.
 - `reporting.py` is the JSON schema boundary. It converts hashes to fixed-width hexadecimal strings and rounds
   score fields.

@@ -1,5 +1,10 @@
 # Frame Quorum
 
+Exact CFR timecodes and cuts-only editing exports are available through
+`scenes --timecode-rate 30000/1001 --drop-frame --edl`.
+See [timecodes and editing](docs/timecodes-and-editing.md) for rational timing,
+sampling-coordinate limits and the supported EDL subset.
+
 [![CI](https://github.com/appleweiping/frame-quorum/actions/workflows/ci.yml/badge.svg)](https://github.com/appleweiping/frame-quorum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/appleweiping/frame-quorum/actions/workflows/codeql.yml/badge.svg)](https://github.com/appleweiping/frame-quorum/actions/workflows/codeql.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB)](https://www.python.org/)
@@ -73,6 +78,23 @@ frame-quorum scan ./frames --output scan.json
 
 `scan` discovers images in natural filename order (`frame_2` before `frame_10`), reads EXIF orientation,
 extracts content measurements, and emits JSON. Add `--recursive` to include nested directories.
+
+### Detect scene cuts and fades
+
+```bash
+frame-quorum scenes ./frames --detector adaptive --output-dir ./scenes \
+  --window-radius 2 --adaptive-ratio 3 --min-content 0.15 --min-scene-frames 5
+frame-quorum scenes ./frames --detector threshold --output-dir ./fades \
+  --dark-threshold 0.05 --min-dark-frames 2
+```
+
+Adaptive detection compares each content change with surrounding changes.
+Threshold detection tracks a transition through darkness until brightness
+returns. Both write `scenes.json` and `statistics.csv`, retaining rejected
+candidates and their reasons. The same workflow also supports `content`,
+`luminance`, and `color` distance modes. Minimum scene lengths include both the
+first and final scene. See [detector semantics and limits](docs/scene-detection.md)
+and run `python examples/detect_scenes.py` for a self-contained example.
 
 ### Select key frames
 
