@@ -6,6 +6,7 @@ import argparse
 import json
 import shutil
 import sys
+from fractions import Fraction
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TextIO
@@ -24,6 +25,7 @@ from .editing import render_edl, render_scene_timecodes
 from .errors import ConfigurationError, FrameQuorumError, OutputError
 from .exports import render_detection_csv
 from .models import AnimationConfig, ConcurrencyConfig, Frame, ScanConfig, SelectionConfig
+from .native_video import NativeVideoConfig, NativeVideoStream
 from .reporting import scan_manifest, selection_manifest, write_json
 from .representation import (
     DEFAULT_COVERED_DISTANCE,
@@ -120,6 +122,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     extract.add_argument("--ffmpeg", default="ffmpeg", help="FFmpeg executable name or path")
     extract.set_defaults(handler=_handle_extract)
+
+    native_scan = commands.add_parser("native-scan", help="stream exact-PTS video measurements as JSONL")
+    native_scan.add_argument("input", type=Path)
+    native_scan.add_argument(
+        "--start", type=_exact_seconds, help="inclusive presentation seconds, e.g. 1001/30000"
+    )
+    native_scan.add_argument("--end", type=_exact_seconds, help="exclusive presentation seconds")
+    native_scan.add_argument("--frame-step", type=int, default=1)
+    native_scan.add_argument(
+        "--video-stream", type=int, default=0, help="zero-based ordinal among video streams"
+    )
+    native_scan.add_argument("--max-frames", type=int, default=10_000)
+    native_scan.add_argument("--max-decoded-frames", type=int, default=100_000)
+    native_scan.add_argument("--max-source-bytes", type=int, default=1_000_000_000)
+    native_scan.add_argument("--max-frame-pixels", type=int, default=16_777_216)
+    native_scan.add_argument("--max-total-pixels", type=int, default=1_000_000_000)
+    native_scan.set_defaults(handler=_handle_native_scan)
 
     scenes = commands.add_parser("scenes", help="detect scene boundaries and export per-frame statistics")
     scenes.add_argument("input", type=Path)
@@ -252,6 +271,59 @@ def _selection_config(args: argparse.Namespace) -> SelectionConfig:
         coverage_weight=args.coverage_weight,
         keep_endpoints=not args.no_endpoints,
     )
+
+
+def _exact_seconds(text: str) -> Fraction:
+    try:
+        if len(text) > 128:
+            raise ValueError("too long")
+        # Fraction decimal parsing otherwise constructs 10**exponent before
+        # NativeVideoConfig can reject the resulting out-of-range rational.
+        # int accepts the same underscore/whitespace exponent spellings as
+        # Fraction; checking only a digit regex would leave those unbounded.
+        exponent = text.lower().rsplit("e", 1)
+        if len(exponent) == 2 and abs(int(exponent[1])) > 128:
+            raise ValueError("decimal exponent is too large")
+        return Fraction(text)
+    except (ValueError, ZeroDivisionError) as exc:
+        raise argparse.ArgumentTypeError("time must be a bounded exact integer, decimal or fraction") from exc
+
+
+def _handle_native_scan(args: argparse.Namespace) -> int:
+    config = NativeVideoConfig(
+        video_stream=args.video_stream,
+        start=args.start,
+        end=args.end,
+        frame_step=args.frame_step,
+        max_frames=args.max_frames,
+        max_decoded_frames=args.max_decoded_frames,
+        max_source_bytes=args.max_source_bytes,
+        max_frame_pixels=args.max_frame_pixels,
+        max_total_pixels=args.max_total_pixels,
+    )
+
+    def emit(record_type: str, data: dict[str, object]) -> None:
+        sys.stdout.write(
+            json.dumps(
+                {
+                    "kind": "frame-quorum-native-scan",
+                    "schema_version": 1,
+                    "record_type": record_type,
+                    **data,
+                },
+                ensure_ascii=True,
+                allow_nan=False,
+                sort_keys=True,
+            )
+            + "\n"
+        )
+
+    with NativeVideoStream(args.input, config) as stream:
+        emit("source", {"metadata": stream.metadata.to_dict()})
+        for frame in stream:
+            emit("frame", {**frame.to_dict(), "metrics": frame.measure().serializable()})
+    emit("summary", {"diagnostics": stream.diagnostics.to_dict()})
+    return 0
 
 
 def _handle_scan(args: argparse.Namespace) -> int:

@@ -70,6 +70,21 @@ reported as a distribution instead of selecting the best trial.
 
 ## Commands
 
+### Read native video without losing PTS
+
+```bash
+python -m pip install -e ".[video]"
+frame-quorum native-scan local.mkv --start 5 --end 53/10 --max-frames 100
+python examples/native_pts.py
+```
+
+The optional PyAV backend incrementally returns owned RGB snapshots with native
+integer PTS and rational time bases, exact presentation-time windows, keyframe
+seek/replay and lifetime work/output limits. The CLI emits measurement JSONL;
+require its terminal summary and inspect the status before treating an output
+prefix as complete. This is a local-file backend, not a native-code sandbox or
+an automatic video-to-scene/EDL conversion. See [contracts and limits](docs/native-video.md).
+
 ### Inspect an image sequence
 
 ```bash
