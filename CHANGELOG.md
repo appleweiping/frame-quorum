@@ -4,6 +4,15 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Native measurement cache and threshold replay
+
+- Capture complete fixed metrics, exact PTS/stride, original video configuration
+  and source digest into bounded canonical JSONL with completion checksums.
+- Reuse the existing detector kernel for explicitly unverified cached analysis;
+  support all five policies without reopening video or loading the native decoder.
+- Add `native-measure`/`native-replay`, no-replace directory publication, exact
+  diagnostic CSV and a generated VFR example that removes its source before replay.
+
 ### Verified native video splitting
 
 - Add actual FFV1/NUT local video-only clip transcoding, exact half-open PTS

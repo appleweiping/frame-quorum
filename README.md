@@ -101,6 +101,21 @@ original-frame counts. A final time remains unknown at EOF or a count limit;
 it is never inferred from FPS. This is offline `O(samples × detectors)` analysis,
 not constant-memory online scene detection. See [native scene contracts](docs/native-scenes.md).
 
+### Tune native scene thresholds without decoding again
+
+```bash
+frame-quorum native-measure local.mkv --output-dir ./measurements
+frame-quorum native-replay ./measurements/measurements.fqm.jsonl \
+  --detectors adaptive luminance --minimum-votes 2 --output-dir ./review-01
+python examples/native_measurement_replay.py
+```
+
+The canonical bounded cache retains exact native coordinates, all fixed metrics,
+source/configuration identity and termination provenance. Replay uses the same
+detector kernel without opening the source, and publishes diagnostic JSON/CSV in
+a new directory. Its explicit `source_verified=false` means historical-data
+analysis, not freshly verified media. See [cache and replay contracts](docs/native-measurements.md).
+
 ### Split native video into verified clips
 
 ```bash

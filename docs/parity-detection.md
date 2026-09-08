@@ -22,7 +22,7 @@ remaining differences.
 | [Hash detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/hash_detector.py) and [histogram detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/histogram_detector.py) | Difference hash participates in composite distance; no standalone configurable hash or histogram detector | Dedicated hash configuration and image histograms with their own calibrated detectors |
 | [TransNet V2 source](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/transnet_v2.py) | No learned detector | Assess reference integration/support level and implement optional model lifecycle, batching, resource controls and a verified model evaluation; no silent model download |
 | [SceneManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/scene_manager.py): processing, scenes, images, callbacks | Offline typed image/native scene partitions, shared five-detector kernels, exact-PTS native decoder coordinator, bounded measurement callbacks, qualified-candidate union/quorum and detailed provenance | Online boundary callbacks, per-scene image export, richer detector/plugin lifecycle and interoperability |
-| [StatsManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/stats_manager.py): metric registry, frame metrics, CSV load/save | Write-only fixed-schema JSON and CSV diagnostics including suppressed candidates | Statistics import, schema/metric registry, corruption handling and recomputation from cached measurements |
+| [StatsManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/stats_manager.py): metric registry, frame metrics, CSV export/tuning; CSV loading is explicitly deprecated in the frozen source | Fixed-schema diagnostics plus bounded canonical native measurement capture/import and same-kernel threshold replay, explicit cached provenance and native multi-detector CSV | Arbitrary metric registry, broader schema interoperability and tuning accuracy/performance corpus; no compatibility claim for the deprecated CSV loader |
 | [Video backends](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/docs/cli/backends.rst): OpenCV/PyAV/MoviePy; native PTS timing on supported VFR backends | Pillow images/animations, bounded FFmpeg extraction, incremental PyAV local-file decoding with exact PTS, seek/replay, generation-local indexing and native offline scene integration | Broader backend/codec compatibility evidence, audio/container inventory and live input contracts |
 | [Timecode APIs](https://github.com/Breakthrough/PySceneDetect/tree/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect): frame/time coordinate conversion | Rational CFR timecodes, explicit PTS quantization, text drop/non-drop counters, native rational VFR scenes with unknown tails preserved | Binary SMPTE, broader interoperability and explicit native scene-to-editor conversion |
 | [Video splitting](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/video_splitter.py): FFmpeg and mkvmerge paths | Actual local FFV1/NUT video-only re-encoding, exact native half-open intervals, complete RGB/PTS/count verification, bounded manifests, interruption cleanup and no-replace directory publication | Audio/subtitle preservation, copy/mkvmerge modes, broader codec/container options, external compatibility/throughput corpus |
@@ -122,8 +122,9 @@ Local verification on 2026-09-07 used Windows, Python 3.11.2 and PyAV 18.1.0:
 
 These are local checks, not remote matrix results, a representative labeled-video
 accuracy benchmark, broader codec certification or whole-repository parity.
-Native scene-to-editor conversion, online boundary delivery, cached-statistics
-replay, richer detectors/plugins and the other open capability rows remain open.
+Native scene-to-editor conversion, online boundary delivery, richer
+detectors/plugins and the other open capability rows remain open. A subsequent
+increment adds the separately documented native measurement replay workflow.
 
 ## Native splitting increment verification
 
@@ -155,3 +156,43 @@ These results do not establish arbitrary codec/container, audio/subtitle,
 stream-copy/mkvmerge, crash-durable storage, native-code sandboxing, broad
 external video/editor compatibility or whole-repository reference parity.
 No new dependency or upstream implementation code was added.
+
+## Native measurement replay increment verification
+
+The increment from published baseline `c4999c0` adds a complete, fixed-schema
+native measurement cache and threshold-tuning workflow, not an importer for the
+image-statistics CSV. It reuses the existing five-detector kernel and preserves
+the fresh-decoding API. See [measurement/replay contracts](native-measurements.md)
+for source/configuration identity, exact coordinates, canonical ingress limits,
+historical provenance and ownership-aware directory publication.
+
+Local verification on 2026-09-07 used locked PyAV 18.1.0 and Pillow 12.3.0:
+
+- Windows, Python 3.11.2: **1027 passed, 3 skipped** in 523.04 seconds; the skips
+  remain the three pre-existing symlink-privilege cases. Total branch-aware
+  coverage **97.36%**; `native_measurements.py` **99.65%**.
+- WSL Ubuntu/Linux, Python 3.12.3: **1030 passed**, no skips, in 215.84 seconds;
+  total coverage **97.41%**. This uses an isolated temporary venv populated from
+  the frozen lock export with package hash verification, real native codecs and
+  the actual Linux no-replace publication path. Both full runs escalate resource
+  warnings and retain the unchanged 95% coverage gate.
+- The **161 new cases**, including **12 real PyAV integration cases**, cover
+  hand-computed cuts/fades/quorum, independent source SHA256 and direct decoded
+  measurements, all five policies against fresh decoding, exact VFR/stride/range
+  identity and threshold replay after source deletion. A fresh subprocess rejects
+  any optional decoder import while successfully replaying the cache. The
+  generated offline example verifies two independently specified thresholds.
+- Ingress cases include recomputed-checksum semantic corruption, duplicate and
+  unknown fields, truncation, noncanonical encodings, portable path-label text,
+  bounded numeric conversion with the process-wide digit guard disabled, exact
+  large rationals, contradictory diagnostics, pre-open special-file rejection,
+  competing publication and cleanup identity/control-exception failures.
+- Ruff lint/format, strict Mypy (26 source modules), Bandit, source/wheel build,
+  strict Twine metadata, wheel contents, frozen-lock and whitespace checks passed.
+
+Cached results explicitly report `source_verified=false`: neither consistency
+checks nor stored hashes authenticate a current source. No native splitting
+trust boundary, version or dependency was changed. Arbitrary metric registries,
+HSV/edge/histogram or learned measurements, online processing, a labeled-video
+tuning corpus, broader interoperability and the other whole-repository gaps
+remain open. These local checks are not remote CI or whole-repository parity.
