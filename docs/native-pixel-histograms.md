@@ -205,7 +205,10 @@ equivalence to that correlation detector, whose helper documentation and default
 normalization call should not be assumed to imply identical probability scaling.
 [Frozen public implementation](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/histogram_detector.py).
 
-HSV/edge and learned detectors, arbitrary plugins, online detection, time-based
-scene minima, joint color distributions, labeled-video calibration and broader
-whole-repository parity remain open. This independently authored increment
-closes a concrete pixel-distribution workflow, not those additional gaps.
+Corresponding-pixel circular HSV and forward-gradient evidence now has its own
+[separate capture/cache/replay workflow](native-pixel-changes.md); it cannot be
+reconstructed from histogram marginals. Canny-based edges, learned detectors,
+arbitrary plugins, online detection, time-based scene minima, joint color
+distributions, labeled-video calibration and broader whole-repository parity
+remain open. This histogram module closes a pixel-distribution workflow, not
+those additional gaps.
