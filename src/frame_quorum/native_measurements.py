@@ -18,7 +18,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import asdict, dataclass, fields
 from fractions import Fraction
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, TypeVar
 
 from PIL import __version__ as pillow_version
 
@@ -46,6 +46,14 @@ from .scene_detection import DetectionConfig
 _KIND = "frame-quorum-native-measurements"
 _METRICS = "frame-quorum-rgb-summary-v1"
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+_Record = TypeVar("_Record")
+
+
+class _Header(Protocol):
+    def header(self) -> dict[str, Any]: ...
+
+
+_Cache = TypeVar("_Cache", bound=_Header)
 
 
 @dataclass(frozen=True, slots=True)
@@ -284,11 +292,9 @@ def capture_native_measurements(
         raise ConfigurationError("video.max_frames exceeds cache sample admission")
     source = _source_path(path)
     try:
-        before, identity = _hash_source(source, options.max_source_bytes)
-        metadata, diagnostics, samples = _collect_native_samples(source, scene_options, on_sample)
-        after, final_identity = _hash_source(source, options.max_source_bytes)
-        if before != after or identity != final_identity or _fingerprint(source.stat()) != identity:
-            raise ScanError("source changed across measurement capture")
+        before, metadata, diagnostics, samples = _capture_source_records(
+            source, options, lambda resolved: _collect_native_samples(resolved, scene_options, on_sample)
+        )
         result = NativeMeasurements(options, metadata, diagnostics, samples, before)
         # Validate the persistable form under the requested limits before success.
         for _ in _cache_lines(result, bounds):
@@ -296,6 +302,19 @@ def capture_native_measurements(
         return result
     except OSError as error:
         raise ScanError("native measurement source read failed") from error
+
+
+def _capture_source_records(
+    source: Path,
+    options: NativeVideoConfig,
+    collect: Callable[[Path], tuple[NativeVideoMetadata, NativeVideoDiagnostics, tuple[_Record, ...]]],
+) -> tuple[str, NativeVideoMetadata, NativeVideoDiagnostics, tuple[_Record, ...]]:
+    before, identity = _hash_source(source, options.max_source_bytes)
+    metadata, diagnostics, records = collect(source)
+    after, final_identity = _hash_source(source, options.max_source_bytes)
+    if before != after or identity != final_identity or _fingerprint(source.stat()) != identity:
+        raise ScanError("source changed across measurement capture")
+    return before, metadata, diagnostics, records
 
 
 def _canonical(value: dict[str, Any]) -> bytes:
@@ -315,11 +334,17 @@ def _measurement_lines(data: NativeMeasurements) -> Iterator[bytes]:
 
 
 def _cache_lines(data: NativeMeasurements, limits: NativeMeasurementLimits) -> Iterator[bytes]:
-    if len(data.samples) > limits.max_samples:
+    yield from _bounded_cache_lines(_measurement_lines(data), len(data.samples), limits)
+
+
+def _bounded_cache_lines(
+    lines: Iterator[bytes], count: int, limits: NativeMeasurementLimits
+) -> Iterator[bytes]:
+    if count > limits.max_samples:
         raise ConfigurationError("measurement count exceeds cache sample limit")
     digest = hashlib.sha256()
     total = 0
-    for line in _measurement_lines(data):
+    for line in lines:
         if len(line) > limits.max_line_bytes:
             raise ConfigurationError("measurement record exceeds cache line limit")
         total += len(line)
@@ -327,7 +352,7 @@ def _cache_lines(data: NativeMeasurements, limits: NativeMeasurementLimits) -> I
             raise ConfigurationError("measurements exceed cache byte limit")
         digest.update(line)
         yield line
-    footer = _canonical({"kind": "end", "sample_count": len(data.samples), "sha256": digest.hexdigest()})
+    footer = _canonical({"kind": "end", "sample_count": count, "sha256": digest.hexdigest()})
     if len(footer) > limits.max_line_bytes or total + len(footer) > limits.max_cache_bytes:
         raise ConfigurationError("measurement footer exceeds cache limits")
     yield footer
@@ -500,6 +525,30 @@ def read_native_measurements(
 ) -> NativeMeasurements:
     """Read a complete canonical cache; never open the recorded source-media path."""
     bounds = _limits(limits)
+
+    def prepare(
+        header: dict[str, Any], count: int
+    ) -> tuple[
+        Callable[[dict[str, Any]], NativeSceneSample],
+        Callable[[tuple[NativeSceneSample, ...]], NativeMeasurements],
+    ]:
+        arguments = _parse_header(header)
+        if count > arguments["video"].max_frames or count != arguments["diagnostics"].returned_frames:
+            raise ConfigurationError("declared count contradicts decode configuration/diagnostics")
+        return _parse_sample, lambda samples: NativeMeasurements(samples=samples, **arguments)
+
+    return _read_cache(path, bounds, prepare)
+
+
+def _read_cache(
+    path: str | Path,
+    bounds: NativeMeasurementLimits,
+    prepare: Callable[
+        [dict[str, Any], int],
+        tuple[Callable[[dict[str, Any]], _Record], Callable[[tuple[_Record, ...]], _Cache]],
+    ],
+) -> _Cache:
+    """Shared bounded transport; schema hooks are trusted internal code only."""
     source = _source_path(path)
     try:
         observed = source.lstat()
@@ -535,14 +584,12 @@ def read_native_measurements(
 
             first, header = record()
             count = _integer(header.get("sample_count"), "sample_count", 0, bounds.max_samples)
-            arguments = _parse_header(header)
-            if count > arguments["video"].max_frames or count != arguments["diagnostics"].returned_frames:
-                raise ConfigurationError("declared count contradicts decode configuration/diagnostics")
+            parse, finish = prepare(header, count)
             digest = hashlib.sha256(first)
             samples = []
             for _ in range(count):
                 line, raw = record()
-                samples.append(_parse_sample(raw))
+                samples.append(parse(raw))
                 digest.update(line)
             _, footer = record()
             _keys(footer, {"kind", "sample_count", "sha256"})
@@ -555,7 +602,7 @@ def read_native_measurements(
                 or _fingerprint(os.fstat(handle.fileno())) != _fingerprint(info)
             ):
                 raise ConfigurationError("cache has trailing bytes or changed while reading")
-            result = NativeMeasurements(samples=tuple(samples), **arguments)
+            result = finish(tuple(samples))
             if _canonical(result.header()) != _canonical(header):
                 raise ConfigurationError("cache header is not in normalized form")
             return result

@@ -7,13 +7,13 @@ result retain O(samples * detectors) data. This is not O(1) streaming detection.
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from contextlib import suppress
 from dataclasses import asdict, dataclass, field
 from fractions import Fraction
 from itertools import pairwise
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeVar, cast
 
 from .errors import ConfigurationError
 from .metrics import content_distance
@@ -21,6 +21,7 @@ from .models import FrameMetrics
 from .native_video import (
     NativeVideoConfig,
     NativeVideoDiagnostics,
+    NativeVideoFrame,
     NativeVideoMetadata,
     NativeVideoStatus,
     NativeVideoStream,
@@ -46,6 +47,7 @@ _REASONS = {
     "final_fade",
 }
 _ACCEPTED_REASONS = {"adaptive_peak", "distance_threshold", "completed_fade", "final_fade"}
+_Record = TypeVar("_Record")
 
 
 def _time(value: Fraction, name: str) -> None:
@@ -379,24 +381,38 @@ def _scenes(
     config: NativeSceneConfig,
     diagnostics: NativeVideoDiagnostics,
 ) -> tuple[NativeScene, ...]:
-    if not statistics:
+    return _partition_native_samples(
+        tuple(row.sample for row in statistics),
+        [row.sample.sample_index for row in statistics if row.accepted],
+        config.video,
+        diagnostics,
+    )
+
+
+def _partition_native_samples(
+    samples: Sequence[NativeSceneSample],
+    cuts: list[int],
+    video: NativeVideoConfig,
+    diagnostics: NativeVideoDiagnostics,
+) -> tuple[NativeScene, ...]:
+    """Shared exact-PTS partition, independent of the detector's measurement type."""
+    if not samples:
         return ()
-    cuts = [row.sample.sample_index for row in statistics if row.accepted]
     scenes = []
-    for ordinal, (start, end) in enumerate(zip([0, *cuts], [*cuts, len(statistics)], strict=True)):
+    for ordinal, (start, end) in enumerate(zip([0, *cuts], [*cuts, len(samples)], strict=True)):
         endpoint = None
         reason: Literal["cut", "requested_end", "unknown"] = "unknown"
-        if end < len(statistics):
-            endpoint, reason = statistics[end].sample.presentation_time, "cut"
-        elif diagnostics.status is NativeVideoStatus.RANGE_END and config.video.end is not None:
-            endpoint, reason = Fraction(config.video.end), "requested_end"
+        if end < len(samples):
+            endpoint, reason = samples[end].presentation_time, "cut"
+        elif diagnostics.status is NativeVideoStatus.RANGE_END and video.end is not None:
+            endpoint, reason = Fraction(video.end), "requested_end"
         scenes.append(
             NativeScene(
                 ordinal,
                 start,
                 end,
-                statistics[start].sample.presentation_time,
-                statistics[end - 1].sample.presentation_time,
+                samples[start].presentation_time,
+                samples[end - 1].presentation_time,
                 endpoint,
                 reason,
             )
@@ -428,6 +444,22 @@ def _collect_native_samples(
     options: NativeSceneConfig,
     on_sample: Callable[[NativeSceneSample], None] | None,
 ) -> tuple[NativeVideoMetadata, NativeVideoDiagnostics, tuple[NativeSceneSample, ...]]:
+    return _collect_native_records(path, options.video, _measure_native_sample, on_sample)
+
+
+def _measure_native_sample(frame: NativeVideoFrame) -> NativeSceneSample:
+    return NativeSceneSample(
+        frame.pts, frame.time_base, frame.decode_index, frame.sample_index, frame.generation, frame.measure()
+    )
+
+
+def _collect_native_records(
+    path: str | Path,
+    video: NativeVideoConfig,
+    measure: Callable[[NativeVideoFrame], _Record],
+    on_sample: Callable[[_Record], None] | None,
+) -> tuple[NativeVideoMetadata, NativeVideoDiagnostics, tuple[_Record, ...]]:
+    """Trusted internal measurement hook; not a public plugin/import mechanism."""
     if on_sample is not None and (
         not callable(on_sample)
         or inspect.iscoroutinefunction(on_sample)
@@ -435,22 +467,15 @@ def _collect_native_samples(
         or inspect.iscoroutinefunction(getattr(on_sample, "__call__", None))  # noqa: B004
     ):
         raise ConfigurationError("on_sample must be a synchronous callable")
-    samples: list[NativeSceneSample] = []
-    with NativeVideoStream(path, options.video) as stream:
+    samples: list[_Record] = []
+    with NativeVideoStream(path, video) as stream:
         metadata = stream.metadata
         for frame in stream:
-            sample = NativeSceneSample(
-                frame.pts,
-                frame.time_base,
-                frame.decode_index,
-                frame.sample_index,
-                frame.generation,
-                frame.measure(),
-            )
+            sample = measure(frame)
             del frame  # The collection/callback retains measurements, not earlier RGB snapshots.
             samples.append(sample)
             if on_sample is not None:
-                returned = cast(Callable[[NativeSceneSample], object], on_sample)(sample)
+                returned = cast(Callable[[_Record], object], on_sample)(sample)
                 if returned is not None:
                     if inspect.iscoroutine(returned):
                         # Ordinary invalid-coroutine cleanup cannot hide the
