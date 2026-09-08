@@ -19,7 +19,7 @@ remaining differences.
 | [Content detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/content_detector.py): weighted pixel HSV change and edge controls | Composite difference hash/RGB mean/luminance distances, independent color/luminance modes | Pixel change representation, configurable weights/edge contribution, resolution/accuracy benchmarks; the current composite is not numerically equivalent |
 | [Adaptive detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/adaptive_detector.py): centered local change contrast with absolute content floor | Centered rolling ratio, content floor, explicit window-border policy, minimum scene checks, per-sample diagnostics and native/image CLI | Online decision buffering, motion-rich labeled evaluations and comparison across resolutions |
 | [Threshold detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/threshold_detector.py): fade-in/fade-out, bias and final-fade policy | Absolute-luminance fade state, hysteresis, actual-dark-sample count, bias, explicit supplied-tail policy and generated native VFR fade evidence | Real-video labeled fade benchmark and online detector interface; intensity definitions differ |
-| [Hash detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/hash_detector.py) and [histogram detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/histogram_detector.py) | Difference hash participates in composite distance; no standalone configurable hash or histogram detector | Dedicated hash configuration and image histograms with their own calibrated detectors |
+| [Hash detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/hash_detector.py) and [histogram detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/histogram_detector.py) | Difference hash participates in composite distance; full-pixel RGB cell histograms now provide separate global/spatial total-variation detection and native cache/replay | Dedicated hash configuration, calibrated histogram accuracy corpus and time-based/online integration; RGB total variation is not the reference Y-channel correlation algorithm |
 | [TransNet V2 source](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/transnet_v2.py) | No learned detector | Assess reference integration/support level and implement optional model lifecycle, batching, resource controls and a verified model evaluation; no silent model download |
 | [SceneManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/scene_manager.py): processing, scenes, images, callbacks | Offline typed image/native scene partitions, shared five-detector kernels, exact-PTS native decoder coordinator, bounded measurement callbacks, qualified-candidate union/quorum and detailed provenance | Online boundary callbacks, per-scene image export, richer detector/plugin lifecycle and interoperability |
 | [StatsManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/stats_manager.py): metric registry, frame metrics, CSV export/tuning; CSV loading is explicitly deprecated in the frozen source | Fixed-schema diagnostics plus bounded canonical native measurement capture/import and same-kernel threshold replay, explicit cached provenance and native multi-detector CSV | Arbitrary metric registry, broader schema interoperability and tuning accuracy/performance corpus; no compatibility claim for the deprecated CSV loader |
@@ -196,3 +196,54 @@ trust boundary, version or dependency was changed. Arbitrary metric registries,
 HSV/edge/histogram or learned measurements, online processing, a labeled-video
 tuning corpus, broader interoperability and the other whole-repository gaps
 remain open. These local checks are not remote CI or whole-repository parity.
+
+## Full-pixel histogram increment verification
+
+The increment from published baseline `801a2b7` adds full-resolution RGB cell
+histograms, global/spatial total-variation scores, native capture, a separate
+versioned canonical cache, threshold replay, JSON/CSV reports and CLI commands.
+It reuses the existing native collector, decision policy, exact scene partition
+and ownership-aware publication paths. The frozen reference's histogram detector
+uses Y-channel correlation: this is an independently authored RGB measurement
+contract, not numerical equivalence. See [pixel histogram contracts](native-pixel-histograms.md).
+
+Local verification on 2026-09-07 used locked PyAV 18.1.0 and Pillow 12.3.0:
+
+- Windows, Python 3.11.2: **1185 passed, 3 skipped** in 131.67 seconds; the skips
+  remain the three pre-existing symlink-privilege cases. Total branch-aware
+  coverage **97.57%**.
+- WSL Ubuntu/Linux, Python 3.12.3: **1188 passed**, no skips, in 159.30 seconds;
+  total coverage **97.62%**. The isolated temporary environment used a frozen
+  lock export with package hash verification. Both full runs escalated resource
+  warnings and retained the unchanged 95% gate. `pixel_histograms.py`,
+  `native_histograms.py` and the refactored `native_scenes.py` each reached
+  **100% statement/branch coverage**.
+- The **158 new cases**, including **15 real PyAV integration cases**, cover
+  independent per-pixel bin counts, odd-sized cell areas, all supported bin/grid
+  combinations, RGB marginal-versus-layout changes, exact nonzero VFR PTS,
+  equal summary metrics with different histograms, range/stride admission and
+  replay after source deletion. A fresh subprocess forbids decoder imports
+  while successfully replaying the cache; the offline example checks global
+  and spatial results against independently specified cuts.
+- Wire/resource/ownership cases cover recomputed-checksum corruption,
+  pre-parser count and pixel admission, malformed input, result-score
+  consistency, borrowed image aliases, old/new schema rejection, competing
+  publication, lost acknowledgment and primary/cleanup control exceptions.
+  The old cache serializer remains byte-identical to a fixed fixture produced
+  by the signed baseline: 2874 bytes, SHA256
+  `7f717a62f64de44bf75e2cb0909b604e13be6bbd4ba2da617cbede40231f1e9f`.
+- Ruff lint/format, strict Mypy (28 source modules), Bandit, source/wheel build,
+  strict Twine metadata, wheel contents, frozen-lock and whitespace checks passed.
+
+The two failed development test fixtures were corrected before these full gates:
+one incorrectly expected one scene for a hand-authored sequence with a cut; the
+other exceeded its helper's eight-frame cap before reaching the intended large
+pixel-budget assertion. Neither fix changed production behavior or a threshold.
+
+Cached histogram results retain `source_verified=false` and cannot be passed as
+fresh scene results to native splitting. No old measurement schema, splitting
+trust boundary, dependency or version was changed. This increment does not add
+HSV/edge/learned measurements, online detection, arbitrary spatial grids, an
+accuracy-calibrated video corpus or reference-algorithm equivalence. The remaining
+whole-repository capability rows stay open; these local gates are not remote CI
+or proof of complete parity.

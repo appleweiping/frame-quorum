@@ -4,6 +4,15 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Full-pixel RGB cell histograms
+
+- Add exact full-pixel per-cell/channel counts and independently defined global
+  and spatial total-variation distances, with aggregate count/pixel admission.
+- Capture summaries and histograms in one native decode; publish a separate
+  versioned cache and no-decode histogram JSON/CSV review workflow.
+- Preserve the old fixed summary wire bytes and native scene/splitting boundary;
+  add real-pixel oracles, a layout-change demo and explicit remaining limitations.
+
 ### Native measurement cache and threshold replay
 
 - Capture complete fixed metrics, exact PTS/stride, original video configuration

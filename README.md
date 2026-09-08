@@ -116,6 +116,21 @@ detector kernel without opening the source, and publishes diagnostic JSON/CSV in
 a new directory. Its explicit `source_verified=false` means historical-data
 analysis, not freshly verified media. See [cache and replay contracts](docs/native-measurements.md).
 
+### Compare full-pixel distributions and spatial layout
+
+```bash
+frame-quorum native-histogram-measure local.mkv --output-dir ./histogram-cache
+frame-quorum native-histogram-replay ./histogram-cache/histograms.fqm.jsonl \
+  --mode spatial --threshold 0.5 --output-dir ./histogram-review
+python examples/native_pixel_histograms.py
+```
+
+RGB cell histograms retain complete per-channel pixel distributions, including
+changes that mean-color/hash summaries can miss. Global mode ignores layout;
+spatial mode compares relative cells. The separate bounded cache supports
+no-decode threshold tuning without changing the old summary cache or claiming
+source authentication. See [pixel histogram contracts](docs/native-pixel-histograms.md).
+
 ### Split native video into verified clips
 
 ```bash

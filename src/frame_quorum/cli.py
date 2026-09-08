@@ -25,6 +25,13 @@ from .editing import render_edl, render_scene_timecodes
 from .errors import ConfigurationError, FrameQuorumError, OutputError
 from .exports import render_detection_csv
 from .models import AnimationConfig, ConcurrencyConfig, Frame, ScanConfig, SelectionConfig
+from .native_histograms import (
+    analyze_native_histograms,
+    capture_native_histograms,
+    read_native_histograms,
+    write_native_histogram_replay,
+    write_native_histograms,
+)
 from .native_measurements import (
     NativeMeasurementLimits,
     analyze_native_measurements,
@@ -36,6 +43,7 @@ from .native_measurements import (
 from .native_scenes import NativeSceneConfig, detect_native_scenes
 from .native_splitting import NativeClip, NativeSplitConfig, split_native_video
 from .native_video import NativeVideoConfig, NativeVideoStream
+from .pixel_histograms import HistogramDetectionConfig, PixelHistogramConfig, PixelHistogramLimits
 from .reporting import scan_manifest, selection_manifest, write_json
 from .representation import (
     DEFAULT_COVERED_DISTANCE,
@@ -153,6 +161,28 @@ def build_parser() -> argparse.ArgumentParser:
     _add_measurement_options(replay)
     replay.set_defaults(handler=_handle_native_replay)
 
+    histogram_measure = commands.add_parser(
+        "native-histogram-measure", help="capture full-RGB cell histograms and exact native coordinates"
+    )
+    _add_native_options(histogram_measure)
+    _add_measurement_options(histogram_measure)
+    _add_histogram_limits(histogram_measure)
+    histogram_measure.add_argument("--bins", type=int, default=32, choices=(8, 16, 32, 64, 128, 256))
+    histogram_measure.add_argument("--rows", type=int, default=2, choices=(1, 2))
+    histogram_measure.add_argument("--columns", type=int, default=2, choices=(1, 2))
+    histogram_measure.set_defaults(handler=_handle_histogram_measure)
+
+    histogram_replay = commands.add_parser(
+        "native-histogram-replay", help="replay stored RGB histogram thresholds without decoding"
+    )
+    histogram_replay.add_argument("input", type=Path)
+    _add_measurement_options(histogram_replay)
+    _add_histogram_limits(histogram_replay)
+    histogram_replay.add_argument("--mode", choices=("global", "spatial"), default="spatial")
+    histogram_replay.add_argument("--threshold", type=float, default=0.5)
+    histogram_replay.add_argument("--min-scene-samples", type=int, default=1)
+    histogram_replay.set_defaults(handler=_handle_histogram_replay)
+
     native_split = commands.add_parser("native-split", help="publish verified lossless video-only clips")
     native_split.add_argument("input", type=Path)
     native_split.add_argument("--output-dir", "-o", type=Path, required=True)
@@ -222,6 +252,13 @@ def _add_measurement_options(parser: argparse.ArgumentParser) -> None:
     for name in NativeMeasurementLimits.__dataclass_fields__:
         parser.add_argument(
             "--" + name.replace("_", "-"), type=int, default=getattr(NativeMeasurementLimits(), name)
+        )
+
+
+def _add_histogram_limits(parser: argparse.ArgumentParser) -> None:
+    for name in PixelHistogramLimits.__dataclass_fields__:
+        parser.add_argument(
+            "--" + name.replace("_", "-"), type=int, default=getattr(PixelHistogramLimits(), name)
         )
 
 
@@ -415,6 +452,48 @@ def _handle_native_measure(args: argparse.Namespace) -> int:
     path = write_native_measurements(measurements, args.output_dir, limits=limits)
     sys.stdout.write(
         json.dumps({"cache": str(path), "measurement_digest": measurements.digest}, ensure_ascii=True) + "\n"
+    )
+    return 0
+
+
+def _pixel_limits(args: argparse.Namespace) -> PixelHistogramLimits:
+    return PixelHistogramLimits(
+        **{name: getattr(args, name) for name in PixelHistogramLimits.__dataclass_fields__}
+    )
+
+
+def _handle_histogram_measure(args: argparse.Namespace) -> int:
+    limits, pixel_limits = _measurement_limits(args), _pixel_limits(args)
+    data = capture_native_histograms(
+        args.input,
+        _native_config(args),
+        histogram=PixelHistogramConfig(args.bins, args.rows, args.columns),
+        limits=limits,
+        pixel_limits=pixel_limits,
+    )
+    cache = write_native_histograms(data, args.output_dir, limits=limits, pixel_limits=pixel_limits)
+    sys.stdout.write(
+        json.dumps({"cache": str(cache), "measurement_digest": data.digest}, ensure_ascii=True) + "\n"
+    )
+    return 0
+
+
+def _handle_histogram_replay(args: argparse.Namespace) -> int:
+    limits, pixel_limits = _measurement_limits(args), _pixel_limits(args)
+    config = HistogramDetectionConfig(args.mode, args.threshold, args.min_scene_samples)
+    data = read_native_histograms(args.input, limits=limits, pixel_limits=pixel_limits)
+    result = analyze_native_histograms(data, config, limits=limits, pixel_limits=pixel_limits)
+    path = write_native_histogram_replay(result, args.output_dir, limits=limits, pixel_limits=pixel_limits)
+    sys.stdout.write(
+        json.dumps(
+            {
+                "output_dir": str(path),
+                "measurement_digest": data.digest,
+                "source_verified": False,
+                "cut_positions": result.cut_positions,
+            }
+        )
+        + "\n"
     )
     return 0
 
