@@ -25,6 +25,14 @@ from .editing import render_edl, render_scene_timecodes
 from .errors import ConfigurationError, FrameQuorumError, OutputError
 from .exports import render_detection_csv
 from .models import AnimationConfig, ConcurrencyConfig, Frame, ScanConfig, SelectionConfig
+from .native_measurements import (
+    NativeMeasurementLimits,
+    analyze_native_measurements,
+    capture_native_measurements,
+    read_native_measurements,
+    write_native_measurements,
+    write_native_replay,
+)
 from .native_scenes import NativeSceneConfig, detect_native_scenes
 from .native_splitting import NativeClip, NativeSplitConfig, split_native_video
 from .native_video import NativeVideoConfig, NativeVideoStream
@@ -131,27 +139,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     native_scenes = commands.add_parser("native-scenes", help="analyze exact-PTS video scenes as JSON")
     _add_native_options(native_scenes)
-    native_scenes.add_argument(
-        "--detectors",
-        nargs="+",
-        choices=("content", "luminance", "color", "adaptive", "threshold"),
-        default=["adaptive"],
-    )
-    native_scenes.add_argument("--threshold", type=float, default=0.30)
-    native_scenes.add_argument("--min-scene-frames", type=int, default=1, help="per-detector sample minimum")
-    native_scenes.add_argument("--minimum-votes", type=int, default=1)
-    native_scenes.add_argument(
-        "--min-scene-samples", type=int, default=1, help="final ensemble sample minimum"
-    )
-    native_scenes.add_argument("--window-radius", type=int, default=2)
-    native_scenes.add_argument("--adaptive-ratio", type=float, default=3.0)
-    native_scenes.add_argument("--min-content", type=float, default=0.15)
-    native_scenes.add_argument("--dark-threshold", type=float, default=0.05)
-    native_scenes.add_argument("--hysteresis", type=float, default=0.02)
-    native_scenes.add_argument("--min-dark-frames", type=int, default=2)
-    native_scenes.add_argument("--fade-bias", type=float, default=0.0)
-    native_scenes.add_argument("--include-final-fade", action="store_true")
+    _add_detector_options(native_scenes)
     native_scenes.set_defaults(handler=_handle_native_scenes)
+
+    measure = commands.add_parser("native-measure", help="capture bounded replayable native measurements")
+    _add_native_options(measure)
+    _add_measurement_options(measure)
+    measure.set_defaults(handler=_handle_native_measure)
+
+    replay = commands.add_parser("native-replay", help="replay cached measurements without decoding media")
+    replay.add_argument("input", type=Path)
+    _add_detector_options(replay)
+    _add_measurement_options(replay)
+    replay.set_defaults(handler=_handle_native_replay)
 
     native_split = commands.add_parser("native-split", help="publish verified lossless video-only clips")
     native_split.add_argument("input", type=Path)
@@ -194,6 +194,35 @@ def build_parser() -> argparse.ArgumentParser:
     scenes.add_argument("--drop-frame", action="store_true", help="use exact NTSC drop-frame labels")
     scenes.add_argument("--edl", action="store_true", help="also export a cuts-only single-reel video EDL")
     return parser
+
+
+def _add_detector_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--detectors",
+        nargs="+",
+        default=["adaptive"],
+        choices=("content", "luminance", "color", "adaptive", "threshold"),
+    )
+    parser.add_argument("--threshold", type=float, default=0.30)
+    parser.add_argument("--min-scene-frames", type=int, default=1, help="per-detector sample minimum")
+    parser.add_argument("--minimum-votes", type=int, default=1)
+    parser.add_argument("--min-scene-samples", type=int, default=1, help="final ensemble sample minimum")
+    parser.add_argument("--window-radius", type=int, default=2)
+    parser.add_argument("--adaptive-ratio", type=float, default=3.0)
+    parser.add_argument("--min-content", type=float, default=0.15)
+    parser.add_argument("--dark-threshold", type=float, default=0.05)
+    parser.add_argument("--hysteresis", type=float, default=0.02)
+    parser.add_argument("--min-dark-frames", type=int, default=2)
+    parser.add_argument("--fade-bias", type=float, default=0.0)
+    parser.add_argument("--include-final-fade", action="store_true")
+
+
+def _add_measurement_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--output-dir", "-o", type=Path, required=True)
+    for name in NativeMeasurementLimits.__dataclass_fields__:
+        parser.add_argument(
+            "--" + name.replace("_", "-"), type=int, default=getattr(NativeMeasurementLimits(), name)
+        )
 
 
 def _add_native_options(parser: argparse.ArgumentParser) -> None:
@@ -342,7 +371,21 @@ def _native_config(args: argparse.Namespace) -> NativeVideoConfig:
 
 
 def _handle_native_scenes(args: argparse.Namespace) -> int:
-    detectors = tuple(
+    result = detect_native_scenes(
+        args.input,
+        NativeSceneConfig(
+            video=_native_config(args),
+            detectors=_detector_configs(args),
+            minimum_votes=args.minimum_votes,
+            min_scene_samples=args.min_scene_samples,
+        ),
+    )
+    sys.stdout.write(json.dumps(result.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n")
+    return 0
+
+
+def _detector_configs(args: argparse.Namespace) -> tuple[DetectionConfig, ...]:
+    return tuple(
         DetectionConfig(
             detector=name,
             threshold=args.threshold,
@@ -358,16 +401,45 @@ def _handle_native_scenes(args: argparse.Namespace) -> int:
         )
         for name in args.detectors
     )
-    result = detect_native_scenes(
-        args.input,
-        NativeSceneConfig(
-            video=_native_config(args),
-            detectors=detectors,
-            minimum_votes=args.minimum_votes,
-            min_scene_samples=args.min_scene_samples,
-        ),
+
+
+def _measurement_limits(args: argparse.Namespace) -> NativeMeasurementLimits:
+    return NativeMeasurementLimits(
+        **{name: getattr(args, name) for name in NativeMeasurementLimits.__dataclass_fields__}
     )
-    sys.stdout.write(json.dumps(result.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n")
+
+
+def _handle_native_measure(args: argparse.Namespace) -> int:
+    limits = _measurement_limits(args)
+    measurements = capture_native_measurements(args.input, _native_config(args), limits=limits)
+    path = write_native_measurements(measurements, args.output_dir, limits=limits)
+    sys.stdout.write(
+        json.dumps({"cache": str(path), "measurement_digest": measurements.digest}, ensure_ascii=True) + "\n"
+    )
+    return 0
+
+
+def _handle_native_replay(args: argparse.Namespace) -> int:
+    limits = _measurement_limits(args)
+    measurements = read_native_measurements(args.input, limits=limits)
+    result = analyze_native_measurements(
+        measurements,
+        detectors=_detector_configs(args),
+        minimum_votes=args.minimum_votes,
+        min_scene_samples=args.min_scene_samples,
+    )
+    path = write_native_replay(result, args.output_dir, limits=limits)
+    sys.stdout.write(
+        json.dumps(
+            {
+                "output_dir": str(path),
+                "measurement_digest": result.measurement_digest,
+                "source_verified": False,
+            },
+            ensure_ascii=True,
+        )
+        + "\n"
+    )
     return 0
 
 

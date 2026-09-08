@@ -26,6 +26,17 @@ from .models import (
     SelectionConfig,
     SelectionResult,
 )
+from .native_measurements import (
+    NativeMeasurementLimits,
+    NativeMeasurements,
+    NativeReplayResult,
+    analyze_native_measurements,
+    capture_native_measurements,
+    read_native_measurements,
+    render_native_detection_csv,
+    write_native_measurements,
+    write_native_replay,
+)
 from .native_scenes import (
     NativeDetectorStatistic,
     NativeScene,
@@ -82,6 +93,9 @@ __all__ = [
     "FrameTimecode",
     "NativeClip",
     "NativeDetectorStatistic",
+    "NativeMeasurementLimits",
+    "NativeMeasurements",
+    "NativeReplayResult",
     "NativeScene",
     "NativeSceneConfig",
     "NativeSceneResult",
@@ -105,8 +119,10 @@ __all__ = [
     "VideoExtractionConfig",
     "VideoExtractionResult",
     "allocate_budget",
+    "analyze_native_measurements",
     "analyze_scenes",
     "benchmark_manifest",
+    "capture_native_measurements",
     "detect_native_scenes",
     "detect_scenes",
     "detect_shots",
@@ -115,10 +131,12 @@ __all__ = [
     "extract_video_frames",
     "ffmpeg_available",
     "native_scene_clips",
+    "read_native_measurements",
     "render_benchmark_svg",
     "render_decision_csv",
     "render_detection_csv",
     "render_edl",
+    "render_native_detection_csv",
     "render_scene_timecodes",
     "run_benchmark",
     "scan_frames",
@@ -126,6 +144,8 @@ __all__ = [
     "source_content_digest",
     "split_native_video",
     "write_decision_csv",
+    "write_native_measurements",
+    "write_native_replay",
 ]
 
 __version__ = VERSION

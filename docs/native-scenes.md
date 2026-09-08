@@ -191,6 +191,8 @@ Tests compare all five policies against the existing offline implementation on
 hand-authored measurements; real generated videos independently check direct
 PyAV measurements, manual cuts/fades, VFR sampling, native coordinate mapping,
 limits/EOF, empty intervals, exact CLI output and callback cleanup. Codec
-compatibility beyond the fixtures is not implied. Cached-statistics imports,
-live sources, arbitrary detector plugins, duration-based minima, audio,
-clip/image export and complete PySceneDetect repository parity remain open.
+compatibility beyond the fixtures is not implied. The separate
+[native measurement cache](native-measurements.md) now supports explicit offline
+threshold replay, and [native splitting](native-splitting.md) supports verified
+video-only clips. Live sources, arbitrary detector plugins, duration-based
+minima, audio, per-scene image export and whole-repository parity remain open.

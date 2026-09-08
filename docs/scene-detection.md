@@ -137,4 +137,6 @@ frame because detection operates on the full sequence. The public
 
 Statistics can be plotted or compared between parameters. They are currently
 write-only: importing a CSV, registering arbitrary metrics, or replaying a new
-detector directly from a cached statistics file is not implemented.
+detector directly from this image-statistics CSV is not implemented. Native
+video has a separate [complete measurement cache and replay workflow](native-measurements.md);
+that workflow does not import or infer missing measurements from this CSV.

@@ -419,6 +419,15 @@ def detect_native_scenes(
     options = NativeSceneConfig() if config is None else config
     if type(options) is not NativeSceneConfig:
         raise ConfigurationError("config must be NativeSceneConfig")
+    metadata, diagnostics, samples = _collect_native_samples(path, options, on_sample)
+    return _analyze_native_samples(options, metadata, diagnostics, samples)
+
+
+def _collect_native_samples(
+    path: str | Path,
+    options: NativeSceneConfig,
+    on_sample: Callable[[NativeSceneSample], None] | None,
+) -> tuple[NativeVideoMetadata, NativeVideoDiagnostics, tuple[NativeSceneSample, ...]]:
     if on_sample is not None and (
         not callable(on_sample)
         or inspect.iscoroutinefunction(on_sample)
@@ -449,7 +458,16 @@ def detect_native_scenes(
                         with suppress(Exception):
                             returned.close()
                     raise ConfigurationError("on_sample must return None, not a value or awaitable")
-    diagnostics = stream.diagnostics
+    return metadata, stream.diagnostics, tuple(samples)
+
+
+def _analyze_native_samples(
+    options: NativeSceneConfig,
+    metadata: NativeVideoMetadata,
+    diagnostics: NativeVideoDiagnostics,
+    samples: tuple[NativeSceneSample, ...],
+) -> NativeSceneResult:
+    """Single shared measurement-only kernel for fresh decoding and explicit replay."""
     metrics = [sample.metrics for sample in samples]
     content = [0.0] + [content_distance(left, right) for left, right in pairwise(metrics)]
     per_detector: list[list[NativeDetectorStatistic]] = []
