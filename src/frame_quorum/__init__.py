@@ -48,6 +48,15 @@ from .native_measurements import (
     write_native_measurements,
     write_native_replay,
 )
+from .native_online import (
+    NativeOnlineDiagnostics,
+    NativeOnlineLimits,
+    NativePixelChangeEnd,
+    NativePixelChangeStream,
+    NativePixelChangeUpdate,
+    iter_native_pixel_change_jsonl,
+    write_native_pixel_change_stream,
+)
 from .native_pixel_changes import (
     NativePixelChangeMeasurements,
     NativePixelChangeReplayResult,
@@ -140,9 +149,14 @@ __all__ = [
     "NativeHistogramSample",
     "NativeMeasurementLimits",
     "NativeMeasurements",
+    "NativeOnlineDiagnostics",
+    "NativeOnlineLimits",
+    "NativePixelChangeEnd",
     "NativePixelChangeMeasurements",
     "NativePixelChangeReplayResult",
     "NativePixelChangeSample",
+    "NativePixelChangeStream",
+    "NativePixelChangeUpdate",
     "NativeReplayResult",
     "NativeScene",
     "NativeSceneConfig",
@@ -192,6 +206,7 @@ __all__ = [
     "extract_video_frames",
     "ffmpeg_available",
     "histogram_distance",
+    "iter_native_pixel_change_jsonl",
     "measure_pixel_change",
     "measure_pixel_histogram",
     "native_scene_clips",
@@ -214,6 +229,7 @@ __all__ = [
     "write_native_histograms",
     "write_native_measurements",
     "write_native_pixel_change_replay",
+    "write_native_pixel_change_stream",
     "write_native_pixel_changes",
     "write_native_replay",
 ]

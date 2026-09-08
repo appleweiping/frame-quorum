@@ -21,6 +21,11 @@ request, or hidden inference step. Every selected and rejected frame receives a 
 
 ## Why use it?
 
+For bounded online video decisions, use `native-change-stream`: it reports
+exact-PTS HSV/gradient cuts with explicit confirmation delay, EOF and cancellation
+semantics, without retaining the whole video statistics table. See
+[online detection](docs/native-online.md) and its generated local demo.
+
 - **Auditable selection:** the manifest records quality, change, coverage, total utility, rank, and reason.
 - **Content-aware:** a structural difference hash is combined with mean color and luminance, avoiding the
   common failure where differently colored flat frames appear identical.

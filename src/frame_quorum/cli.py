@@ -40,6 +40,12 @@ from .native_measurements import (
     write_native_measurements,
     write_native_replay,
 )
+from .native_online import (
+    NativeOnlineLimits,
+    NativePixelChangeStream,
+    iter_native_pixel_change_jsonl,
+    write_native_pixel_change_stream,
+)
 from .native_pixel_changes import (
     PixelChangeDetectionConfig,
     analyze_native_pixel_changes,
@@ -207,17 +213,20 @@ def build_parser() -> argparse.ArgumentParser:
     change_replay.add_argument("input", type=Path)
     _add_measurement_options(change_replay)
     _add_change_limits(change_replay)
-    change_replay.add_argument("--detector", choices=("content", "adaptive"), default="content")
-    change_replay.add_argument(
-        "--weights", type=float, nargs=4, default=(1, 1, 1, 0), metavar=("H", "S", "V", "E")
-    )
-    change_replay.add_argument("--value-only", action="store_true")
-    change_replay.add_argument("--threshold", type=float, default=0.30)
-    change_replay.add_argument("--min-scene-samples", type=int, default=1)
-    change_replay.add_argument("--window-radius", type=int, default=2)
-    change_replay.add_argument("--adaptive-ratio", type=float, default=3.0)
-    change_replay.add_argument("--min-content", type=float, default=0.15)
+    _add_pixel_detection_options(change_replay)
     change_replay.set_defaults(handler=_handle_change_replay)
+
+    online = commands.add_parser("native-change-stream", help="emit bounded online pixel decisions as JSONL")
+    _add_native_options(online)
+    _add_change_limits(online)
+    _add_pixel_detection_options(online)
+    online.add_argument("--edge-radius", type=int, choices=(1, 2, 3, 4), default=1)
+    online.add_argument("--output-dir", "-o", type=Path)
+    for name in NativeOnlineLimits.__dataclass_fields__:
+        online.add_argument(
+            "--" + name.replace("_", "-"), type=int, default=getattr(NativeOnlineLimits(), name)
+        )
+    online.set_defaults(handler=_handle_change_stream)
 
     native_split = commands.add_parser("native-split", help="publish verified lossless video-only clips")
     native_split.add_argument("input", type=Path)
@@ -583,9 +592,19 @@ def _handle_change_measure(args: argparse.Namespace) -> int:
     return 0
 
 
-def _handle_change_replay(args: argparse.Namespace) -> int:
-    limits, pixel_limits = _measurement_limits(args), _change_pixel_limits(args)
-    config = PixelChangeDetectionConfig(
+def _add_pixel_detection_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--detector", choices=("content", "adaptive"), default="content")
+    parser.add_argument("--weights", type=float, nargs=4, default=(1, 1, 1, 0), metavar=("H", "S", "V", "E"))
+    parser.add_argument("--value-only", action="store_true")
+    parser.add_argument("--threshold", type=float, default=0.30)
+    parser.add_argument("--min-scene-samples", type=int, default=1)
+    parser.add_argument("--window-radius", type=int, default=2)
+    parser.add_argument("--adaptive-ratio", type=float, default=3.0)
+    parser.add_argument("--min-content", type=float, default=0.15)
+
+
+def _pixel_detection_config(args: argparse.Namespace) -> PixelChangeDetectionConfig:
+    return PixelChangeDetectionConfig(
         detector=args.detector,
         weights=PixelChangeWeights(*args.weights),
         value_only=args.value_only,
@@ -595,6 +614,11 @@ def _handle_change_replay(args: argparse.Namespace) -> int:
         adaptive_ratio=args.adaptive_ratio,
         min_content=args.min_content,
     )
+
+
+def _handle_change_replay(args: argparse.Namespace) -> int:
+    limits, pixel_limits = _measurement_limits(args), _change_pixel_limits(args)
+    config = _pixel_detection_config(args)
     data = read_native_pixel_changes(args.input, limits=limits, pixel_limits=pixel_limits)
     result = analyze_native_pixel_changes(data, config, limits=limits, pixel_limits=pixel_limits)
     path = write_native_pixel_change_replay(result, args.output_dir, limits=limits, pixel_limits=pixel_limits)
@@ -609,6 +633,34 @@ def _handle_change_replay(args: argparse.Namespace) -> int:
         )
         + "\n"
     )
+    return 0
+
+
+def _handle_change_stream(args: argparse.Namespace) -> int:
+    stream = NativePixelChangeStream(
+        args.input,
+        video=_native_config(args),
+        measurement=PixelChangeConfig(args.edge_radius),
+        detection=_pixel_detection_config(args),
+        pixel_limits=_change_pixel_limits(args),
+        limits=NativeOnlineLimits(
+            **{name: getattr(args, name) for name in NativeOnlineLimits.__dataclass_fields__}
+        ),
+    )
+    if args.output_dir is not None:
+        output = write_native_pixel_change_stream(stream, args.output_dir)
+        sys.stdout.write(json.dumps({"events": str(output), "source_verified": False}) + "\n")
+    else:
+        try:
+            with stream:
+                for line in iter_native_pixel_change_jsonl(stream):
+                    binary = getattr(sys.stdout, "buffer", None)
+                    written = sys.stdout.write(line.decode("ascii")) if binary is None else binary.write(line)
+                    if written != len(line):
+                        raise OutputError("online stdout encountered a short write")
+                    (sys.stdout if binary is None else binary).flush()
+        except OSError as error:
+            raise OutputError("online stdout write failed; output may contain a partial prefix") from error
     return 0
 
 
