@@ -25,7 +25,7 @@ remaining differences.
 | [StatsManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/stats_manager.py): metric registry, frame metrics, CSV load/save | Write-only fixed-schema JSON and CSV diagnostics including suppressed candidates | Statistics import, schema/metric registry, corruption handling and recomputation from cached measurements |
 | [Video backends](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/docs/cli/backends.rst): OpenCV/PyAV/MoviePy; native PTS timing on supported VFR backends | Pillow images/animations, bounded FFmpeg extraction, incremental PyAV local-file decoding with exact PTS, seek/replay, generation-local indexing and native offline scene integration | Broader backend/codec compatibility evidence, audio/container inventory and live input contracts |
 | [Timecode APIs](https://github.com/Breakthrough/PySceneDetect/tree/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect): frame/time coordinate conversion | Rational CFR timecodes, explicit PTS quantization, text drop/non-drop counters, native rational VFR scenes with unknown tails preserved | Binary SMPTE, broader interoperability and explicit native scene-to-editor conversion |
-| [Video splitting](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/video_splitter.py): FFmpeg and mkvmerge paths | FFmpeg extraction only | Scene clip splitting, copy/re-encode modes, audio preservation, precise boundary verification and interruption cleanup |
+| [Video splitting](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/video_splitter.py): FFmpeg and mkvmerge paths | Actual local FFV1/NUT video-only re-encoding, exact native half-open intervals, complete RGB/PTS/count verification, bounded manifests, interruption cleanup and no-replace directory publication | Audio/subtitle preservation, copy/mkvmerge modes, broader codec/container options, external compatibility/throughput corpus |
 | [CLI output commands](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/_cli/commands.py): scene lists, images, HTML, QP/keyframes, EDL, FCP, OTIO | Image/native JSON scene reports, CSV stats, selected-frame CSV/contact sheet, exact CFR timing CSV, cuts-only EDL and native PTS measurement JSONL | Broader editor formats/conformance, image export per scene, HTML overview and keyframe encoder interchange |
 | [CLI/configuration](https://github.com/Breakthrough/PySceneDetect/tree/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/_cli) | Explicit argparse commands, structured errors, atomic report bundle | Config file precedence, chained detector/output workflow and backend feature reporting |
 | [Reference tests and release tests](https://github.com/Breakthrough/PySceneDetect/tree/24953b0bf76af17c450bc143d330eea48fc5e276/tests) | Cross-platform Python CI, 95% coverage gate, analytic and real-Pillow regression inputs | Labeled video scene corpus, precision/recall and timestamp tolerances, native-codec matrix, decoder/format compatibility and performance benchmarks |
@@ -124,3 +124,34 @@ These are local checks, not remote matrix results, a representative labeled-vide
 accuracy benchmark, broader codec certification or whole-repository parity.
 Native scene-to-editor conversion, online boundary delivery, cached-statistics
 replay, richer detectors/plugins and the other open capability rows remain open.
+
+## Native splitting increment verification
+
+The increment from published baseline `7231022` adds real FFV1/NUT video-only
+clips, not just export plans. The separate [splitting contract](native-splitting.md)
+defines exact native `[start, end)` frame inclusion, first-selected-frame
+rebasing, independently decoded output verification, complete-directory
+publication, per-operation limits and preserved cleanup diagnostics.
+
+Local verification on 2026-09-07 used locked PyAV 18.1.0 and Pillow 12.3.0:
+
+- Windows, Python 3.11.2: **866 passed, 3 skipped**; the skips remain the three
+  pre-existing symlink-privilege cases. Total branch-aware coverage **97.10%**;
+  `native_splitting.py` **98.42%**. Resource warnings were escalated.
+- WSL Ubuntu/Linux, Python 3.12.3, isolated temporary venv: **869 passed**, no
+  skips; total coverage **97.15%**. This executes the actual Linux
+  `renameat2(RENAME_NOREPLACE)` path as well as real native codecs, not a mocked
+  platform result. The unchanged 95% gate passes on both systems.
+- The **153 new cases** include exact nonzero VFR/submillisecond intervals,
+  complete direct-PyAV RGB and rational-PTS oracles, one-frame clips, gap/empty
+  intervals, deliberate audio exclusion, unknown/sampled/truncated scene bounds,
+  every configured limit, altered output rejection, competing publication and
+  cleanup identity/interrupt/ordinary-error combinations. The generated offline
+  example independently checks two clips and six frames.
+- Ruff lint/format, strict Mypy (25 modules), Bandit, source/wheel build, strict
+  Twine metadata, wheel contents, frozen-lock and whitespace checks passed.
+
+These results do not establish arbitrary codec/container, audio/subtitle,
+stream-copy/mkvmerge, crash-durable storage, native-code sandboxing, broad
+external video/editor compatibility or whole-repository reference parity.
+No new dependency or upstream implementation code was added.

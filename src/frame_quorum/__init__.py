@@ -35,6 +35,13 @@ from .native_scenes import (
     NativeSceneStatistic,
     detect_native_scenes,
 )
+from .native_splitting import (
+    NativeClip,
+    NativeSplitConfig,
+    NativeSplitResult,
+    native_scene_clips,
+    split_native_video,
+)
 from .native_video import (
     NativeVideoConfig,
     NativeVideoDiagnostics,
@@ -73,12 +80,15 @@ __all__ = [
     "FrameRate",
     "FrameStatistic",
     "FrameTimecode",
+    "NativeClip",
     "NativeDetectorStatistic",
     "NativeScene",
     "NativeSceneConfig",
     "NativeSceneResult",
     "NativeSceneSample",
     "NativeSceneStatistic",
+    "NativeSplitConfig",
+    "NativeSplitResult",
     "NativeVideoConfig",
     "NativeVideoDiagnostics",
     "NativeVideoFrame",
@@ -104,6 +114,7 @@ __all__ = [
     "evaluate_selection",
     "extract_video_frames",
     "ffmpeg_available",
+    "native_scene_clips",
     "render_benchmark_svg",
     "render_decision_csv",
     "render_detection_csv",
@@ -113,6 +124,7 @@ __all__ = [
     "scan_frames",
     "select_frames",
     "source_content_digest",
+    "split_native_video",
     "write_decision_csv",
 ]
 

@@ -101,6 +101,23 @@ original-frame counts. A final time remains unknown at EOF or a count limit;
 it is never inferred from FPS. This is offline `O(samples × detectors)` analysis,
 not constant-memory online scene detection. See [native scene contracts](docs/native-scenes.md).
 
+### Split native video into verified clips
+
+```bash
+frame-quorum native-split local.mkv --output-dir ./new-clips \
+  --clip 5 1001/100 --clip 1001/100 15 --max-frames 5000
+python examples/native_splitting.py
+```
+
+This optional PyAV workflow creates actual FFV1/NUT video-only clips with exact
+half-open native presentation bounds. Every output is reopened and its complete
+frame count, rational timestamps and RGB hashes verified before a new directory
+is atomically published without replacing existing destinations. A manifest
+records each source/output frame mapping. Use `native_scene_clips()` for complete,
+unsampled scene decisions; an unknown final endpoint needs a caller-supplied
+exact bound. Audio, arbitrary codecs/containers and power-loss durability are
+not claimed. See [native splitting](docs/native-splitting.md).
+
 ### Inspect an image sequence
 
 ```bash

@@ -280,13 +280,15 @@ def _local_path_text(text: str) -> None:
 
 
 def _format(header: bytes) -> str:
+    if header.startswith(b"nut/multimedia container\x00"):
+        return "nut"
     if header.startswith(b"\x1aE\xdf\xa3"):
         return "matroska"
     if header[:4] == b"RIFF" and header[8:12] == b"AVI ":
         return "avi"
     if header[4:8] == b"ftyp":
         return "mov"
-    raise ScanError("native video supports only Matroska/WebM, AVI and ftyp-stamped MP4/MOV files")
+    raise ScanError("native video supports only NUT, Matroska/WebM, AVI and ftyp-stamped MP4/MOV files")
 
 
 class _LocalReader:
@@ -398,7 +400,7 @@ class NativeVideoStream(Iterator[NativeVideoFrame]):
             if self._fingerprint is not None and fingerprint != self._fingerprint:
                 raise ScanError("native video source changed before seek/replay")
             self._fingerprint = fingerprint
-            format_name = _format(self._file.read(16))
+            format_name = _format(self._file.read(32))
             self._file.seek(0)
             self._container = av.open(
                 _LocalReader(self._file, fingerprint),
