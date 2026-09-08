@@ -4,6 +4,17 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Exact audio/video splitting
+
+- Add separate exact `split_native_av` / `NativeAVSplitConfig` / `native-av-split`
+  workflow for fixed FFV1 + PCM16 / NUT outputs, with common source-audio-grid
+  rebasing, half-open sample selection and complete independent dual-track checks.
+- Bound source/selected/verification audio work, immediate mux packet admission
+  and total output bytes; reject discontinuities, unsupported formats and
+  observed source identity changes before safe no-replace directory publication.
+- Preserve the existing video-only contract and all prior cache wire formats;
+  add a fully generated offline stereo/VFR example. No dependency or version change.
+
 ### Bounded online pixel detection
 
 - Add a synchronous exact-PTS pixel decision stream with final per-sample

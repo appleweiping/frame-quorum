@@ -21,14 +21,55 @@ remaining differences.
 | [Threshold detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/threshold_detector.py): fade-in/fade-out, bias and final-fade policy | Absolute-luminance fade state, hysteresis, actual-dark-sample count, bias, explicit supplied-tail policy and generated native VFR fade evidence | Real-video labeled fade benchmark and online detector interface; intensity definitions differ |
 | [Hash detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/hash_detector.py) and [histogram detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/histogram_detector.py) | Difference hash participates in composite distance; full-pixel RGB cell histograms now provide separate global/spatial total-variation detection and native cache/replay | Dedicated hash configuration, calibrated histogram accuracy corpus and time-based/online integration; RGB total variation is not the reference Y-channel correlation algorithm |
 | [TransNet V2 source](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/transnet_v2.py) | No learned detector | Assess reference integration/support level and implement optional model lifecycle, batching, resource controls and a verified model evaluation; no silent model download |
-| [SceneManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/scene_manager.py): processing, scenes, images, callbacks | Offline typed image/native scene partitions, shared five-detector kernels, exact-PTS native decoder coordinator, bounded measurement callbacks, qualified-candidate union/quorum and detailed provenance | Online boundary callbacks, per-scene image export, richer detector/plugin lifecycle and interoperability |
+| [SceneManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/scene_manager.py): processing, scenes, images, callbacks | Offline image/native scene partitions, five-detector kernels, exact-PTS callbacks, qualified-candidate union/quorum and bounded online pixel decision events | Past-boundary RGB callbacks, per-scene image export, crop/downscale/interpolation controls, richer detector/plugin lifecycle and interoperability |
 | [StatsManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/stats_manager.py): metric registry, frame metrics, CSV export/tuning; CSV loading is explicitly deprecated in the frozen source | Fixed-schema diagnostics plus bounded canonical native measurement capture/import and same-kernel threshold replay, explicit cached provenance and native multi-detector CSV | Arbitrary metric registry, broader schema interoperability and tuning accuracy/performance corpus; no compatibility claim for the deprecated CSV loader |
-| [Video backends](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/docs/cli/backends.rst): OpenCV/PyAV/MoviePy; native PTS timing on supported VFR backends | Pillow images/animations, bounded FFmpeg extraction, incremental PyAV local-file decoding with exact PTS, seek/replay, generation-local indexing and native offline scene integration | Broader backend/codec compatibility evidence, audio/container inventory and live input contracts |
-| [Timecode APIs](https://github.com/Breakthrough/PySceneDetect/tree/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect): frame/time coordinate conversion | Rational CFR timecodes, explicit PTS quantization, text drop/non-drop counters, native rational VFR scenes with unknown tails preserved | Binary SMPTE, broader interoperability and explicit native scene-to-editor conversion |
-| [Video splitting](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/video_splitter.py): FFmpeg and mkvmerge paths | Actual local FFV1/NUT video-only re-encoding, exact native half-open intervals, complete RGB/PTS/count verification, bounded manifests, interruption cleanup and no-replace directory publication | Audio/subtitle preservation, copy/mkvmerge modes, broader codec/container options, external compatibility/throughput corpus |
+| [Video backends](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/docs/cli/backends.rst): OpenCV/PyAV/MoviePy; native PTS timing on supported VFR backends | Pillow images/animations, bounded FFmpeg extraction, incremental local PyAV video and fixed PCM16 decoding with exact PTS | Multi-file `VideoStreamConcat`, broader backend/codec compatibility evidence, general container inventory, file-like/network/live input contracts |
+| [Timecode APIs](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/common.py): `Timecode` / `FrameTimecode` conversion | Rational CFR timecodes, explicit PTS quantization, text drop/non-drop counters, native rational VFR scenes with unknown tails preserved | Broader interoperability and explicit native scene-to-editor conversion; binary SMPTE packing is not a frozen-reference public capability |
+| [Video splitting](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/output/video.py): FFmpeg and mkvmerge paths | Video-only FFV1/NUT plus separate exact FFV1/PCM16 NUT clips, common audio-grid epoch, complete RGB/PTS/PCM/sample verification and no-replace publication | General audio format/channel/resampling policies, copy/mkvmerge modes, broader codecs/containers, explicit subtitle policy and external compatibility/throughput corpus |
 | [CLI output commands](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/_cli/commands.py): scene lists, images, HTML, QP/keyframes, EDL, FCP, OTIO | Image/native JSON scene reports, CSV stats, selected-frame CSV/contact sheet, exact CFR timing CSV, cuts-only EDL and native PTS measurement JSONL | Broader editor formats/conformance, image export per scene, HTML overview and keyframe encoder interchange |
 | [CLI/configuration](https://github.com/Breakthrough/PySceneDetect/tree/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/_cli) | Explicit argparse commands, structured errors, atomic report bundle | Config file precedence, chained detector/output workflow and backend feature reporting |
 | [Reference tests and release tests](https://github.com/Breakthrough/PySceneDetect/tree/24953b0bf76af17c450bc143d330eea48fc5e276/tests) | Cross-platform Python CI, 95% coverage gate, analytic and real-Pillow regression inputs | Labeled video scene corpus, precision/recall and timestamp tolerances, native-codec matrix, decoder/format compatibility and performance benchmarks |
+
+## Remaining whole-reference public workflow audit (2026-09-08)
+
+This follow-up read freezes the same commit and compares actual public symbols,
+not directory or test counts. The following correct and expand the ledger;
+they do not reduce the whole-repository target or claim completed parity.
+
+- [`VideoStreamConcat` / `SourceSpan` / `map_span`](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/backends/concat.py)
+  form a real multi-source timeline. The reference opens one source at a time,
+  remaps offsets using actual observed ends, checks dimensions and maps scene
+  spans back to source intervals. Frame Quorum has no equivalent composition.
+- The real timecode implementation is `common.py`; `frame_timecode.py` is a
+  deprecated compatibility shim. The frozen public API does not supply binary
+  SMPTE packing, so that earlier row was inaccurate as a reference gap. It
+  could be an adjacent feature, not evidence of a missing frozen capability.
+- [`output/__init__.py`](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/output/__init__.py)
+  contains CSV/HTML, EDL, Final Cut and OTIO exporters. Our existing optional
+  OTIO `cmx_3600` **reader smoke test** checks EDL interchange only: it is not an
+  OTIO exporter. FCP7/FCPX, OTIO audio/video timelines, HTML scene overview,
+  QP/Aegisub keyframes and per-scene image output remain open.
+- [`output/image.py`](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/output/image.py)
+  provides per-scene image counts/margins, resize/interpolation, templates and
+  encoding parameters. A selected-frame contact sheet does not implement this
+  native per-scene export chain. SceneManager crop/downscale/plugin lifecycle,
+  CLI config precedence/chaining, `load-scenes`, short-scene drop/last merge
+  and backend/live input variants likewise remain distinct capabilities.
+- Frozen threshold detection includes a `CEILING` bright-fade mode as well as
+  dark fades. Hash detection uses configurable DCT perceptual hashing, not our
+  fixed difference hash; histogram detection uses Y-channel correlation, not
+  RGB marginal/cell total variation. Weighted HSV/Canny/dilation and flash
+  MERGE/SUPPRESS policy are not numerically equivalent to our circular-hue and
+  forward-gradient definitions. These algorithm/parameter gaps remain open.
+- The TransNetV2 source is an optional ONNX prototype with model-path/provider
+  and bounded batch handling. Its docstring mentions CLI use, but the frozen
+  CLI registration/config files do not register it. We do not count that
+  statement as an implemented reference CLI workflow, nor implement a learned
+  model without a deliberate lifecycle and evaluation contract.
+- The frozen FFmpeg splitter allows codec arguments and stream-copy paths,
+  but also appends `-sn`. Optional subtitle-map text alone is not evidence of
+  default subtitle preservation. Our new [fixed audio/video split](native-av-splitting.md)
+  is a real narrow dual-track chain, not arbitrary-format or subtitle parity.
 
 ## Evidence for this implementation increment
 
@@ -375,3 +416,29 @@ existing exclusions; the actual configured gate above passed.
 Online fades, quorum/histogram coordination, live input, time-duration minimums,
 flash merging, richer backend/editor interoperability, learned detection and
 calibrated real-video accuracy/performance remain separate whole-repository gaps.
+
+## Exact dual-track native splitting increment
+
+From signed `e9aeb7ea91955b1c7f131f23ef180ab696144044`, a separate API/CLI now
+implements actual fixed FFV1 + PCM16 / NUT clips with a common source-audio-grid
+epoch. It independently reopens complete selected video and audio output,
+validates original half-open coordinates, runs strict source/selected/verify
+budgets and publishes only the complete verified directory. The old video-only
+API and cache schemas retain their previous meanings. See the
+[audio/video contract and full evidence](native-av-splitting.md).
+
+Local Windows full: **1627 passed, 3 existing symlink-permission skips**, 263.40 s,
+97.95% statement/branch coverage. Local Linux full: **1630 passed, no skips**,
+262.65 s, 97.99%. All **213 new cases** ran on both systems, including 50 genuine
+native/integration/example cases, exact stereo/VFR bytes and timestamps,
+non-sample-aligned NTSC cuts at several sample rates, second-track selection,
+observed buffered-tail source mutation, and cleanup/publication failures.
+The 95% gate and warning escalation remain unchanged. Installed-wheel execution
+and bytewise package/source comparisons passed; no source code was copied.
+
+This closes a narrow actual dual-track splitting chain, not arbitrary audio
+formats, channels, resampling, subtitles, attachments, metadata, stream-copy,
+mkvmerge, arbitrary-container exports, live/concatenated sources or durable
+fsync storage. The other rows remain open, especially reference-algorithm
+variants, per-scene image/editor workflows and calibrated real-world accuracy
+and compatibility evidence. Local test results are not whole-repository parity.

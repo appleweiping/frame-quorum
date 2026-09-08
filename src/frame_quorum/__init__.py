@@ -26,6 +26,8 @@ from .models import (
     SelectionConfig,
     SelectionResult,
 )
+from .native_av import NativeAVSplitConfig
+from .native_av_splitting import NativeAVSplitResult, split_native_av
 from .native_histograms import (
     HistogramStatistic,
     NativeHistogramMeasurements,
@@ -142,6 +144,8 @@ __all__ = [
     "HistogramDetectionConfig",
     "HistogramMode",
     "HistogramStatistic",
+    "NativeAVSplitConfig",
+    "NativeAVSplitResult",
     "NativeClip",
     "NativeDetectorStatistic",
     "NativeHistogramMeasurements",
@@ -223,6 +227,7 @@ __all__ = [
     "scan_frames",
     "select_frames",
     "source_content_digest",
+    "split_native_av",
     "split_native_video",
     "write_decision_csv",
     "write_native_histogram_replay",

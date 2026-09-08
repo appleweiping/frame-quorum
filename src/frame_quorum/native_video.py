@@ -318,6 +318,19 @@ class _LocalReader:
         return True
 
 
+def _open_native_container(
+    av: Any, handle: BinaryIO, fingerprint: tuple[int, int, int, int], format_name: str
+) -> Any:
+    """Open an already-admitted file with the shared fixed local demux policy."""
+    return av.open(
+        _LocalReader(handle, fingerprint),
+        mode="r",
+        format=format_name,
+        io_open=_deny_secondary,
+        options={"protocol_whitelist": "file", "enable_drefs": "0", "use_absolute_path": "0"},
+    )
+
+
 class NativeVideoStream(Iterator[NativeVideoFrame]):
     """One context-managed local decoder; lifetime budgets survive seeks/replay.
 
@@ -402,13 +415,7 @@ class NativeVideoStream(Iterator[NativeVideoFrame]):
             self._fingerprint = fingerprint
             format_name = _format(self._file.read(32))
             self._file.seek(0)
-            self._container = av.open(
-                _LocalReader(self._file, fingerprint),
-                mode="r",
-                format=format_name,
-                io_open=_deny_secondary,
-                options={"protocol_whitelist": "file", "enable_drefs": "0", "use_absolute_path": "0"},
-            )
+            self._container = _open_native_container(av, self._file, fingerprint, format_name)
             streams = self._container.streams.video
             if self.config.video_stream >= len(streams):
                 raise ScanError("requested video stream does not exist")

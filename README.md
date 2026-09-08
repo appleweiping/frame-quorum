@@ -168,6 +168,24 @@ unsampled scene decisions; an unknown final endpoint needs a caller-supplied
 exact bound. Audio, arbitrary codecs/containers and power-loss durability are
 not claimed. See [native splitting](docs/native-splitting.md).
 
+### Preserve exact video/audio synchronization in verified clips
+
+```bash
+frame-quorum native-av-split local.nut --output-dir ./new-av-clips \
+  --clip 5 51/10 --video-stream 0 --audio-stream 0
+python examples/native_av_splitting.py
+```
+
+The separate audio/video workflow writes FFV1 plus PCM16 in NUT, without
+resampling, silence insertion or independent track re-zeroing. It selects
+video frames and audio sample starts in each exact half-open interval, rebases
+both tracks onto one source-audio-grid epoch, then independently reopens every
+output to compare complete RGB/PTS and PCM/sample-grid evidence. Mono/stereo
+decoded PCM16, fixed sample rate and little-endian hosts are required; it is
+not arbitrary codec/container, subtitle or stream-copy support. All configured
+limits and atomic no-replace publication apply to the complete clip directory.
+See [the audio/video contract](docs/native-av-splitting.md).
+
 ### Inspect an image sequence
 
 ```bash
