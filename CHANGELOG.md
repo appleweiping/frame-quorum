@@ -4,6 +4,15 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Full-pixel circular HSV and gradient changes
+
+- Add exact corresponding-pixel hue, saturation, value and forward-gradient
+  evidence with stable weights, V-only mode and bounded adjacent RGB snapshots.
+- Capture in one native pass; replay weighted content/adaptive policies from a
+  distinct strict cache without source access, with exact-PTS JSON/CSV and CLI.
+- Keep old summary/histogram formats and native splitting trust unchanged;
+  include independent integer/pixel oracles and an offline lossless VFR demo.
+
 ### Full-pixel RGB cell histograms
 
 - Add exact full-pixel per-cell/channel counts and independently defined global

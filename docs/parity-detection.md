@@ -16,7 +16,7 @@ remaining differences.
 
 | Reference capability and source | Frame Quorum state | Work still required |
 | --- | --- | --- |
-| [Content detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/content_detector.py): weighted pixel HSV change and edge controls | Composite difference hash/RGB mean/luminance distances, independent color/luminance modes | Pixel change representation, configurable weights/edge contribution, resolution/accuracy benchmarks; the current composite is not numerically equivalent |
+| [Content detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/content_detector.py): weighted pixel HSV change and edge controls | Composite summary detector plus independent full-pixel circular HSV/forward-gradient sums, bounded native capture, stable weighted/V-only and adaptive cache replay | Canny/dilation and flash-merging alternatives, online lifecycle, calibrated resolution/accuracy benchmarks; numerical definitions differ |
 | [Adaptive detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/adaptive_detector.py): centered local change contrast with absolute content floor | Centered rolling ratio, content floor, explicit window-border policy, minimum scene checks, per-sample diagnostics and native/image CLI | Online decision buffering, motion-rich labeled evaluations and comparison across resolutions |
 | [Threshold detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/threshold_detector.py): fade-in/fade-out, bias and final-fade policy | Absolute-luminance fade state, hysteresis, actual-dark-sample count, bias, explicit supplied-tail policy and generated native VFR fade evidence | Real-video labeled fade benchmark and online detector interface; intensity definitions differ |
 | [Hash detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/hash_detector.py) and [histogram detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/histogram_detector.py) | Difference hash participates in composite distance; full-pixel RGB cell histograms now provide separate global/spatial total-variation detection and native cache/replay | Dedicated hash configuration, calibrated histogram accuracy corpus and time-based/online integration; RGB total variation is not the reference Y-channel correlation algorithm |
@@ -247,3 +247,59 @@ HSV/edge/learned measurements, online detection, arbitrary spatial grids, an
 accuracy-calibrated video corpus or reference-algorithm equivalence. The remaining
 whole-repository capability rows stay open; these local gates are not remote CI
 or proof of complete parity.
+
+## Full-pixel HSV/gradient increment
+
+The increment from signed `b5925bdb` adds independent complete-pixel evidence,
+not an inference from summaries or histogram marginals. Four exact integer sums
+enable weighted/V-only content and existing adaptive policy replay without
+decoding. It adds a separately versioned strict cache and native CLI/example,
+reusing collection, parsing, policy, scene partition and owned publication cores.
+See [the numerical, resource and provenance contracts](native-pixel-changes.md).
+
+Local verification on 2026-09-08 used locked PyAV 18.1.0 and Pillow 12.3.0:
+
+- Windows Python 3.11.2: **1312 passed, 3 skipped** in 403.70 seconds, total
+  branch-aware coverage **97.77%**. Skips are the same three pre-existing
+  Windows symlink-privilege cases.
+- WSL/Linux Python 3.12.3: **1315 passed**, no skips, in 461.34 seconds, total
+  coverage **97.81%**. Both full runs escalated `RuntimeWarning` and
+  `ResourceWarning`; the unchanged coverage gate remains 95%.
+- Both new modules reached **100% statement and branch coverage** on both
+  platforms. The **127 new tests**, including **10 real PyAV cases**, cover
+  hand-calculated hues, wraparound, gray suppression, all four radii, clamped
+  gradients, histogram-identical pixel changes, subnormal/large weights, exact
+  native VFR/stride/range coordinates, admission, corruption, ownership and
+  publication. A separate read-only review checked all four sums against an
+  independent Fraction HSV and two-dimensional gradient oracle on 80 small
+  image pairs; it also checked exchange symmetry and subnormal weights.
+- Summary and histogram golden bytes remain unchanged. Their independent
+  fixture digests are respectively
+  `7f717a62f64de44bf75e2cb0909b604e13be6bbd4ba2da617cbede40231f1e9f`
+  (2874-byte complete summary cache) and
+  `da8ebbf429f09f95d6b028e0ebf30112965089c7cb13896b234739873e017d05`
+  (7912-byte histogram header/records before completion footer).
+- An offline-installed, non-editable wheel ran the actual generated-video
+  example under Python `-I`. All 31 package files matched source, wheel and
+  installed copies byte-for-byte. A fresh `-I` child forbade every `av` import
+  and replayed that captured cache after source deletion, obtaining exact cuts
+  `511/100` and `527/100`. Wheel SHA256:
+  `1c4d954a433f649c38d70bc30e83f1456e35d33830b4fbe635186cd446e9aed1`.
+- Whole-repository Ruff lint/format, strict Mypy (30 source modules), Bandit,
+  wheel build, strict Twine metadata, wheel contents, frozen-lock/whitespace
+  checks and 35 local documentation links passed.
+
+Development evidence is retained: the first module tests failed before their
+implementations existed. One subsequent coverage-focused run had 124 passes
+and one fixture failure because the hand-authored golden fixture used `mean_r`
+instead of the existing `mean_red` field; that fixture was corrected without
+changing production arithmetic or acceptance thresholds. An initially created,
+hash-installed WSL `/tmp` environment was absent on a later invocation; the
+successful full run instead created, hash-installed and tested its fresh scoped
+environment inside one shell lifetime. No system configuration was changed and
+the cross-invocation disappearance's cause was not inferred.
+
+Old summary/histogram source algorithms and bytes, dependencies/version and
+native splitting trust are unchanged. This does not close online, learned,
+calibrated accuracy, interop/editor/backend or broader whole-reference repository
+gaps. These local gates are not hosted CI or proof of complete parity.

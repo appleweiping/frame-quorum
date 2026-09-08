@@ -63,6 +63,11 @@ measurement algorithms require an explicitly supported new schema, not a guessed
 conversion from the current RGB-summary metrics. Capture and replay use the same
 original scene kernel as `detect_native_scenes`; no detector was reimplemented.
 
+The separately versioned [RGB histogram](native-pixel-histograms.md) and
+[corresponding-pixel HSV/gradient](native-pixel-changes.md) caches now provide
+additional full-pixel measurements. They are captured from real RGB snapshots,
+never synthesized from this fixed summary schema.
+
 ## Provenance is not source authentication
 
 The cache binds all original video options, metadata, closed diagnostics, exact

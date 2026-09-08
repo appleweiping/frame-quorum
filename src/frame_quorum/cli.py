@@ -40,9 +40,18 @@ from .native_measurements import (
     write_native_measurements,
     write_native_replay,
 )
+from .native_pixel_changes import (
+    PixelChangeDetectionConfig,
+    analyze_native_pixel_changes,
+    capture_native_pixel_changes,
+    read_native_pixel_changes,
+    write_native_pixel_change_replay,
+    write_native_pixel_changes,
+)
 from .native_scenes import NativeSceneConfig, detect_native_scenes
 from .native_splitting import NativeClip, NativeSplitConfig, split_native_video
 from .native_video import NativeVideoConfig, NativeVideoStream
+from .pixel_changes import PixelChangeConfig, PixelChangeLimits, PixelChangeWeights
 from .pixel_histograms import HistogramDetectionConfig, PixelHistogramConfig, PixelHistogramLimits
 from .reporting import scan_manifest, selection_manifest, write_json
 from .representation import (
@@ -183,6 +192,33 @@ def build_parser() -> argparse.ArgumentParser:
     histogram_replay.add_argument("--min-scene-samples", type=int, default=1)
     histogram_replay.set_defaults(handler=_handle_histogram_replay)
 
+    change_measure = commands.add_parser(
+        "native-change-measure", help="capture exact full-pixel HSV and gradient changes"
+    )
+    _add_native_options(change_measure)
+    _add_measurement_options(change_measure)
+    _add_change_limits(change_measure)
+    change_measure.add_argument("--edge-radius", type=int, choices=(1, 2, 3, 4), default=1)
+    change_measure.set_defaults(handler=_handle_change_measure)
+
+    change_replay = commands.add_parser(
+        "native-change-replay", help="reweight cached pixel changes without decoding"
+    )
+    change_replay.add_argument("input", type=Path)
+    _add_measurement_options(change_replay)
+    _add_change_limits(change_replay)
+    change_replay.add_argument("--detector", choices=("content", "adaptive"), default="content")
+    change_replay.add_argument(
+        "--weights", type=float, nargs=4, default=(1, 1, 1, 0), metavar=("H", "S", "V", "E")
+    )
+    change_replay.add_argument("--value-only", action="store_true")
+    change_replay.add_argument("--threshold", type=float, default=0.30)
+    change_replay.add_argument("--min-scene-samples", type=int, default=1)
+    change_replay.add_argument("--window-radius", type=int, default=2)
+    change_replay.add_argument("--adaptive-ratio", type=float, default=3.0)
+    change_replay.add_argument("--min-content", type=float, default=0.15)
+    change_replay.set_defaults(handler=_handle_change_replay)
+
     native_split = commands.add_parser("native-split", help="publish verified lossless video-only clips")
     native_split.add_argument("input", type=Path)
     native_split.add_argument("--output-dir", "-o", type=Path, required=True)
@@ -259,6 +295,13 @@ def _add_histogram_limits(parser: argparse.ArgumentParser) -> None:
     for name in PixelHistogramLimits.__dataclass_fields__:
         parser.add_argument(
             "--" + name.replace("_", "-"), type=int, default=getattr(PixelHistogramLimits(), name)
+        )
+
+
+def _add_change_limits(parser: argparse.ArgumentParser) -> None:
+    for name in PixelChangeLimits.__dataclass_fields__:
+        parser.add_argument(
+            "--" + name.replace("_", "-"), type=int, default=getattr(PixelChangeLimits(), name)
         )
 
 
@@ -516,6 +559,53 @@ def _handle_native_replay(args: argparse.Namespace) -> int:
                 "source_verified": False,
             },
             ensure_ascii=True,
+        )
+        + "\n"
+    )
+    return 0
+
+
+def _change_pixel_limits(args: argparse.Namespace) -> PixelChangeLimits:
+    return PixelChangeLimits(**{name: getattr(args, name) for name in PixelChangeLimits.__dataclass_fields__})
+
+
+def _handle_change_measure(args: argparse.Namespace) -> int:
+    limits, pixel_limits = _measurement_limits(args), _change_pixel_limits(args)
+    data = capture_native_pixel_changes(
+        args.input,
+        _native_config(args),
+        config=PixelChangeConfig(args.edge_radius),
+        limits=limits,
+        pixel_limits=pixel_limits,
+    )
+    cache = write_native_pixel_changes(data, args.output_dir, limits=limits, pixel_limits=pixel_limits)
+    sys.stdout.write(json.dumps({"cache": str(cache), "measurement_digest": data.digest}) + "\n")
+    return 0
+
+
+def _handle_change_replay(args: argparse.Namespace) -> int:
+    limits, pixel_limits = _measurement_limits(args), _change_pixel_limits(args)
+    config = PixelChangeDetectionConfig(
+        detector=args.detector,
+        weights=PixelChangeWeights(*args.weights),
+        value_only=args.value_only,
+        threshold=args.threshold,
+        min_scene_samples=args.min_scene_samples,
+        window_radius=args.window_radius,
+        adaptive_ratio=args.adaptive_ratio,
+        min_content=args.min_content,
+    )
+    data = read_native_pixel_changes(args.input, limits=limits, pixel_limits=pixel_limits)
+    result = analyze_native_pixel_changes(data, config, limits=limits, pixel_limits=pixel_limits)
+    path = write_native_pixel_change_replay(result, args.output_dir, limits=limits, pixel_limits=pixel_limits)
+    sys.stdout.write(
+        json.dumps(
+            {
+                "output_dir": str(path),
+                "measurement_digest": data.digest,
+                "source_verified": False,
+                "cut_positions": result.cut_positions,
+            }
         )
         + "\n"
     )

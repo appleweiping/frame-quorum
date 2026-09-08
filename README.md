@@ -131,6 +131,21 @@ spatial mode compares relative cells. The separate bounded cache supports
 no-decode threshold tuning without changing the old summary cache or claiming
 source authentication. See [pixel histogram contracts](docs/native-pixel-histograms.md).
 
+Corresponding-pixel HSV and gradient evidence detects changes even when the RGB
+histograms stay identical. Capture once, then adjust weights or adaptive thresholds:
+
+```bash
+frame-quorum native-change-measure local.mkv --output-dir ./change-cache
+frame-quorum native-change-replay ./change-cache/pixel-changes.fqm.jsonl \
+  --weights 1 1 1 0 --threshold 0.3 --output-dir ./change-review
+python examples/native_pixel_changes.py
+```
+
+The independent integer HSV/forward-gradient definition, V-only mode, exact pair
+work/byte budgets and separate cache are described in the
+[pixel change contracts](docs/native-pixel-changes.md). Cached results remain
+source-unverified and cannot be supplied as fresh scene evidence to splitting.
+
 ### Split native video into verified clips
 
 ```bash

@@ -201,8 +201,15 @@ be measured through the same metric functions. The decoder never substitutes an
 FPS-based coordinate for a missing PTS and does not quietly translate native VFR
 records into the existing floating-timestamp image-file schema. Its lifetime
 frame/pixel limits bound Python-visible work and results, not native probing,
-codec allocation or CPU. Native scene-coordinator integration remains separate
-work; callers currently consume the exact snapshots directly.
+codec allocation or CPU. The native scene coordinator now collects bounded
+summaries from those snapshots, runs the shared detector kernels and constructs
+exact rational scene intervals without inventing an unknown final endpoint.
+Summary, RGB histogram and corresponding-pixel HSV/gradient capture share that
+collector; their separate versioned caches retain different sufficient evidence.
+Pixel-pair measurement keeps only previous/current RGB snapshots, checks fixed
+dimensions and charges its own complete-frame work/byte budget. Offline replay
+shares candidate/minimum-scene and native partition policies but explicitly
+remains source-unverified and cannot become fresh evidence for splitting.
 
 ## Evaluation boundary
 
