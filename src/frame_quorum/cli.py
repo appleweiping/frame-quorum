@@ -26,6 +26,7 @@ from .errors import ConfigurationError, FrameQuorumError, OutputError
 from .exports import render_detection_csv
 from .models import AnimationConfig, ConcurrencyConfig, Frame, ScanConfig, SelectionConfig
 from .native_scenes import NativeSceneConfig, detect_native_scenes
+from .native_splitting import NativeClip, NativeSplitConfig, split_native_video
 from .native_video import NativeVideoConfig, NativeVideoStream
 from .reporting import scan_manifest, selection_manifest, write_json
 from .representation import (
@@ -151,6 +152,18 @@ def build_parser() -> argparse.ArgumentParser:
     native_scenes.add_argument("--fade-bias", type=float, default=0.0)
     native_scenes.add_argument("--include-final-fade", action="store_true")
     native_scenes.set_defaults(handler=_handle_native_scenes)
+
+    native_split = commands.add_parser("native-split", help="publish verified lossless video-only clips")
+    native_split.add_argument("input", type=Path)
+    native_split.add_argument("--output-dir", "-o", type=Path, required=True)
+    native_split.add_argument(
+        "--clip", nargs=2, type=_exact_seconds, action="append", required=True, metavar=("START", "END")
+    )
+    for name in NativeSplitConfig.__dataclass_fields__:
+        native_split.add_argument(
+            "--" + name.replace("_", "-"), type=int, default=getattr(NativeSplitConfig(), name)
+        )
+    native_split.set_defaults(handler=_handle_native_split)
 
     scenes = commands.add_parser("scenes", help="detect scene boundaries and export per-frame statistics")
     scenes.add_argument("input", type=Path)
@@ -518,6 +531,17 @@ def _handle_demo(args: argparse.Namespace) -> int:
     )
     _write_console(f"Demo frames: {frames_dir}")
     return status
+
+
+def _handle_native_split(args: argparse.Namespace) -> int:
+    config = NativeSplitConfig(
+        **{name: getattr(args, name) for name in NativeSplitConfig.__dataclass_fields__}
+    )
+    result = split_native_video(
+        args.input, args.output_dir, tuple(NativeClip(start, end) for start, end in args.clip), config
+    )
+    sys.stdout.write(json.dumps(result.to_dict(), sort_keys=True) + "\n")
+    return 0
 
 
 def _handle_extract(args: argparse.Namespace) -> int:

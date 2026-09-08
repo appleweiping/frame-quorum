@@ -1,5 +1,11 @@
 # Exact-PTS native scene workflow
 
+For actual lossless clip files, pass complete unsampled results to
+`native_scene_clips(result, final_end=...)` and then `split_native_video()`.
+An unknown tail requires an explicit bound; sampled or count-truncated results
+are rejected. See [native splitting](native-splitting.md) for the separate
+verified FFV1/NUT, video-only publication contract.
+
 `detect_native_scenes` connects the [local native decoder](native-video.md) to
 all five [scene detection algorithms](scene-detection.md). It produces scenes
 and per-sample evidence without extracting image files, assigning fake image

@@ -4,6 +4,17 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Verified native video splitting
+
+- Add actual FFV1/NUT local video-only clip transcoding, exact half-open PTS
+  intervals, first-selected-frame rebasing and complete RGB/PTS/count verification.
+- Add unsampled native-scene interval conversion with explicit unknown-tail
+  handling, bounded output manifests, fixed-format `native-split` CLI and an
+  offline generated-video demonstration.
+- Bound selected hash records, decode/verification work and all output bytes;
+  publish new directories without replacement on supported Windows/Linux paths.
+  Cleanup tracks created file identities and preserves interruptions and residue.
+
 ### Native scene coordination
 
 - Connect native PTS-preserving decoding to all five shared scene detectors,

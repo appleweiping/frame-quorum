@@ -88,7 +88,7 @@ counted to establish that the interval ended, but is not returned.
 
 ## File-only boundary
 
-Only regular local files with Matroska/WebM, AVI, or `ftyp`-stamped MP4/MOV headers
+Only regular local files with NUT, Matroska/WebM, AVI, or `ftyp`-stamped MP4/MOV headers
 are accepted. The header selects a fixed demuxer; broad format autodetection is
 not used. URLs, protocol paths, UNC paths, symbolic-link inputs, HLS/DASH/concat
 playlists, raw streams and unrecognized headers are refused. This is deliberately
