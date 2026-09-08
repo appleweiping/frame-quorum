@@ -162,6 +162,42 @@ def _admit(
         raise ConfigurationError("pixel work exceeds measurement limit")
 
 
+class _PixelChangeMeasurer:
+    """Private shared two-RGB acquisition state; callers own close on every exit."""
+
+    def __init__(self, config: PixelChangeConfig, limits: PixelChangeLimits) -> None:
+        self.config, self.limits = config, limits
+        self.previous: tuple[int, int, bytes] | None = None
+        self.spent = 0
+
+    def measure(self, frame: NativeVideoFrame) -> NativePixelChangeSample:
+        previous = self.previous
+        area = _pixel_count(frame.width, frame.height)
+        if previous is not None and previous[:2] != (frame.width, frame.height):
+            raise ConfigurationError("pixel change capture rejects changing frame dimensions")
+        charge = area if previous is None else 2 * area
+        if self.spent + charge > self.limits.max_measurement_pixels:
+            raise ConfigurationError("pixel work exceeds measurement limit")
+        self.spent += charge
+        with _owned_image(frame.image()) as image:
+            metrics = measure_image(image)
+        change = (
+            None
+            if previous is None
+            else _measure_rgb_change(
+                previous[2], frame.rgb, frame.width, frame.height, self.config, self.limits
+            )
+        )
+        sample = NativeSceneSample(
+            frame.pts, frame.time_base, frame.decode_index, frame.sample_index, frame.generation, metrics
+        )
+        self.previous = (frame.width, frame.height, frame.rgb)
+        return NativePixelChangeSample(sample, frame.width, frame.height, change)
+
+    def close(self) -> None:
+        self.previous = None
+
+
 def capture_native_pixel_changes(
     path: str | Path,
     video: NativeVideoConfig | None = None,
@@ -178,36 +214,13 @@ def capture_native_pixel_changes(
         raise ConfigurationError("video must be NativeVideoConfig")
     acquisition = _change_config(config)
     _admit_capacity(options, bounds, pixels)
-    previous: tuple[int, int, bytes] | None = None
-    spent = 0
-
-    def measure(frame: NativeVideoFrame) -> NativePixelChangeSample:
-        nonlocal previous, spent
-        area = _pixel_count(frame.width, frame.height)
-        if previous is not None and previous[:2] != (frame.width, frame.height):
-            raise ConfigurationError("pixel change capture rejects changing frame dimensions")
-        charge = area if previous is None else 2 * area
-        if spent + charge > pixels.max_measurement_pixels:
-            raise ConfigurationError("pixel work exceeds measurement limit")
-        spent += charge
-        with _owned_image(frame.image()) as image:
-            metrics = measure_image(image)
-        change = (
-            None
-            if previous is None
-            else _measure_rgb_change(previous[2], frame.rgb, frame.width, frame.height, acquisition, pixels)
-        )
-        sample = NativeSceneSample(
-            frame.pts, frame.time_base, frame.decode_index, frame.sample_index, frame.generation, metrics
-        )
-        previous = (frame.width, frame.height, frame.rgb)
-        return NativePixelChangeSample(sample, frame.width, frame.height, change)
+    measurer = _PixelChangeMeasurer(acquisition, pixels)
 
     try:
         digest, metadata, diagnostics, rows = _capture_source_records(
             _source_path(path),
             options,
-            lambda source: _collect_native_records(source, options, measure, on_sample),
+            lambda source: _collect_native_records(source, options, measurer.measure, on_sample),
         )
         base = NativeMeasurements(options, metadata, diagnostics, tuple(row.sample for row in rows), digest)
         result = NativePixelChangeMeasurements(
@@ -224,7 +237,7 @@ def capture_native_pixel_changes(
     except OSError as error:
         raise ScanError("native pixel change capture failed") from error
     finally:
-        previous = None
+        measurer.close()
 
 
 def _lines(data: NativePixelChangeMeasurements) -> Iterator[bytes]:

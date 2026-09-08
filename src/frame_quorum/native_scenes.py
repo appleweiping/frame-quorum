@@ -400,24 +400,43 @@ def _partition_native_samples(
         return ()
     scenes = []
     for ordinal, (start, end) in enumerate(zip([0, *cuts], [*cuts, len(samples)], strict=True)):
-        endpoint = None
-        reason: Literal["cut", "requested_end", "unknown"] = "unknown"
-        if end < len(samples):
-            endpoint, reason = samples[end].presentation_time, "cut"
-        elif diagnostics.status is NativeVideoStatus.RANGE_END and video.end is not None:
-            endpoint, reason = Fraction(video.end), "requested_end"
         scenes.append(
-            NativeScene(
+            _native_scene(
                 ordinal,
-                start,
+                samples[start],
+                samples[end - 1],
                 end,
-                samples[start].presentation_time,
-                samples[end - 1].presentation_time,
-                endpoint,
-                reason,
+                video,
+                diagnostics,
+                samples[end].presentation_time if end < len(samples) else None,
             )
         )
     return tuple(scenes)
+
+
+def _native_scene(
+    ordinal: int,
+    start: NativeSceneSample,
+    last: NativeSceneSample,
+    end_position: int,
+    video: NativeVideoConfig,
+    diagnostics: NativeVideoDiagnostics,
+    cut_time: Fraction | None = None,
+) -> NativeScene:
+    """Shared exact endpoint policy for offline partitions and confirmed online scenes."""
+    endpoint = cut_time
+    reason: Literal["cut", "requested_end", "unknown"] = "cut" if cut_time is not None else "unknown"
+    if cut_time is None and diagnostics.status is NativeVideoStatus.RANGE_END and video.end is not None:
+        endpoint, reason = Fraction(video.end), "requested_end"
+    return NativeScene(
+        ordinal,
+        start.sample_index,
+        end_position,
+        start.presentation_time,
+        last.presentation_time,
+        endpoint,
+        reason,
+    )
 
 
 def detect_native_scenes(

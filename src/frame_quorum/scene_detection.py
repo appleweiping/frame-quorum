@@ -204,21 +204,34 @@ def _decisions(
     decisions: list[tuple[bool, str]] = []
     previous = 0
     for position, score in enumerate(scores):
-        reason = "below_threshold" if score is not None else "incomplete_window"
-        if config.detector == "threshold":
-            reason = "no_completed_fade"
-        if position == 0:
-            reason = "sequence_start"
-        kept = False
-        if position in candidates:
-            if position - previous < config.min_scene_frames:
-                reason = "short_previous_scene"
-            elif len(scores) - position < config.min_scene_frames:
-                reason = "short_final_scene"
-            else:
-                kept, reason, previous = True, candidates[position], position
+        kept, reason = _decision_at(position, score, candidates.get(position), previous, len(scores), config)
+        if kept:
+            previous = position
         decisions.append((kept, reason))
     return decisions
+
+
+def _decision_at(
+    position: int,
+    score: float | None,
+    candidate: str | None,
+    previous: int,
+    count: int,
+    config: DetectionConfig,
+) -> tuple[bool, str]:
+    """One shared decision; online callers must first establish a stable count horizon."""
+    reason = "below_threshold" if score is not None else "incomplete_window"
+    if config.detector == "threshold":
+        reason = "no_completed_fade"
+    if position == 0:
+        reason = "sequence_start"
+    if candidate is not None:
+        if position - previous < config.min_scene_frames:
+            return False, "short_previous_scene"
+        if count - position < config.min_scene_frames:
+            return False, "short_final_scene"
+        return True, candidate
+    return False, reason
 
 
 def _candidates(
@@ -265,18 +278,45 @@ def _candidates(
 
 def _adaptive_scores(content: list[float], radius: int) -> list[float | None]:
     scores: list[float | None] = [None] * len(content)
-    first = radius + 1
-    stop = len(content) - radius
-    if first >= stop:
-        return scores
-    # Distance zero belongs to no image pair, so it is never baseline evidence.
-    window_sum = math.fsum(content[1 : 2 * radius + 2])
-    for position in range(first, stop):
-        baseline = max(0.0, (window_sum - content[position]) / (2 * radius))
-        scores[position] = min(_RATIO_CAP, content[position] / max(baseline, _RATIO_FLOOR))
-        if position + 1 < stop:
-            window_sum = math.fsum((window_sum, -content[position - radius], content[position + radius + 1]))
+    window = _AdaptiveWindow(radius)
+    for value in content:
+        result = window.push(value)
+        if result is not None:
+            position, score = result
+            scores[position] = score
     return scores
+
+
+class _AdaptiveWindow:
+    """Bounded shared rolling arithmetic, preserving the original fsum operation order."""
+
+    def __init__(self, radius: int) -> None:
+        self.radius = radius
+        self.values: list[float] = []
+        self.count = 0
+        self.total = 0.0
+        self.offset = 0
+
+    def push(self, value: float) -> tuple[int, float] | None:
+        position = self.count
+        self.count += 1
+        # Distance zero belongs to no image pair, so it is never baseline evidence.
+        if position == 0:
+            return None
+        width = 2 * self.radius + 1
+        if len(self.values) == width:
+            outgoing = self.values[self.offset]
+            self.total = math.fsum((self.total, -outgoing, value))
+            self.values[self.offset] = value
+            self.offset = (self.offset + 1) % width
+        else:
+            self.values.append(value)
+            if len(self.values) < width:
+                return None
+            self.total = math.fsum(self.values)
+        target = self.values[(self.offset + self.radius) % width]
+        baseline = max(0.0, (self.total - target) / (2 * self.radius))
+        return position - self.radius, min(_RATIO_CAP, target / max(baseline, _RATIO_FLOOR))
 
 
 def _fade_candidates(metrics: Sequence[FrameMetrics], config: DetectionConfig) -> dict[int, str]:

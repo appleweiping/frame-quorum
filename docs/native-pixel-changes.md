@@ -179,6 +179,9 @@ provides weighted HSV and Canny-based edge controls, and its
 [adaptive detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/adaptive_detector.py)
 adds local contrast filtering. This implementation is independently authored,
 with explicitly different numerical definitions, not a numerical reproduction.
-Canny/dilation, online detection, flash merging, motion compensation, learned
+Canny/dilation, flash merging, motion compensation, learned
 models, calibrated real-video accuracy/throughput evaluation and the broader
 [whole-repository ledger](parity-detection.md) remain open.
+For the separate bounded content/adaptive event workflow, see
+[online pixel detection](native-online.md). Capture/replay itself still retains
+its full bounded sample table and its existing wire format.

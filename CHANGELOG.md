@@ -4,6 +4,15 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Bounded online pixel detection
+
+- Add a synchronous exact-PTS pixel decision stream with final per-sample
+  statistics, delayed confirmed scene boundaries and explicit EOF/cancel states.
+- Share original pixel, rolling adaptive, minimum-scene and endpoint kernels;
+  preserve all three prior cache wires and source-unverified splitting limits.
+- Add bounded canonical JSONL, non-overwriting directory publication, CLI,
+  independent numerical/temporal oracles and generated lossless VFR examples.
+
 ### Full-pixel circular HSV and gradient changes
 
 - Add exact corresponding-pixel hue, saturation, value and forward-gradient

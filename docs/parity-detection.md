@@ -16,8 +16,8 @@ remaining differences.
 
 | Reference capability and source | Frame Quorum state | Work still required |
 | --- | --- | --- |
-| [Content detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/content_detector.py): weighted pixel HSV change and edge controls | Composite summary detector plus independent full-pixel circular HSV/forward-gradient sums, bounded native capture, stable weighted/V-only and adaptive cache replay | Canny/dilation and flash-merging alternatives, online lifecycle, calibrated resolution/accuracy benchmarks; numerical definitions differ |
-| [Adaptive detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/adaptive_detector.py): centered local change contrast with absolute content floor | Centered rolling ratio, content floor, explicit window-border policy, minimum scene checks, per-sample diagnostics and native/image CLI | Online decision buffering, motion-rich labeled evaluations and comparison across resolutions |
+| [Content detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/content_detector.py): weighted pixel HSV change and edge controls | Composite summaries plus original full-pixel HSV/gradient sums, bounded native capture, weighted/V-only cache replay and synchronous online final decisions | Canny/dilation and flash-merging alternatives, calibrated resolution/accuracy benchmarks; numerical definitions differ |
+| [Adaptive detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/adaptive_detector.py): centered local change contrast with absolute content floor | Shared bounded rolling arithmetic, explicit window borders/minimum-tail confirmation, offline diagnostics and exact-PTS online pixel events | Motion-rich labeled evaluations, time-duration minimums, comparison across resolutions and broader online detector coordination |
 | [Threshold detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/threshold_detector.py): fade-in/fade-out, bias and final-fade policy | Absolute-luminance fade state, hysteresis, actual-dark-sample count, bias, explicit supplied-tail policy and generated native VFR fade evidence | Real-video labeled fade benchmark and online detector interface; intensity definitions differ |
 | [Hash detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/hash_detector.py) and [histogram detector](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/histogram_detector.py) | Difference hash participates in composite distance; full-pixel RGB cell histograms now provide separate global/spatial total-variation detection and native cache/replay | Dedicated hash configuration, calibrated histogram accuracy corpus and time-based/online integration; RGB total variation is not the reference Y-channel correlation algorithm |
 | [TransNet V2 source](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/transnet_v2.py) | No learned detector | Assess reference integration/support level and implement optional model lifecycle, batching, resource controls and a verified model evaluation; no silent model download |
@@ -303,3 +303,75 @@ Old summary/histogram source algorithms and bytes, dependencies/version and
 native splitting trust are unchanged. This does not close online, learned,
 calibrated accuracy, interop/editor/backend or broader whole-reference repository
 gaps. These local gates are not hosted CI or proof of complete parity.
+
+## Bounded online pixel detection increment
+
+Baseline `2538a06a7bcb8c9f4ec6e7397f31c7bf92e77260`; frozen reference unchanged.
+The reference's real detector interface is
+[`scenedetect/detector.py`](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detector.py),
+not the deprecated `scene_detector.py` shim. Its per-frame processing, EOF
+post-processing and delayed-event bound establish the online workflow gap.
+The frozen adaptive detector buffers `2r+1` scores and returns a past center
+timecode; its "two-pass" description does not mean whole-video materialization.
+SceneManager has a bounded decode queue but also retains its cutting list;
+that queue alone is not evidence of bounded total result memory.
+
+The original [online implementation](native-online.md) now shares the existing
+two-RGB measurement, exact rolling arithmetic, minimum-scene decision and native
+endpoint kernels. It confirms final per-sample statistics at a conservative
+`max(r, m-1)` horizon, preserving the existing minimum-tail semantics without
+retractions. It has no full-source hash prerequisite, complete sample table or
+background producer. Source-unverified event/End types and an independent JSONL
+schema do not change prior cache bytes or become native splitting input.
+
+Tests include independently specified content/adaptive cuts, the frozen former
+rolling fsum operation sequence, finite buffer peaks, cooperative cancellation,
+resource failure/control precedence, final-line byte admission, checksum and
+no-replace output. Generated FFV1 VFR cases are independently reopened to verify
+every RGB frame and exact PTS; hue/gradient integer oracles and offline replay
+comparisons check evidence, scores and complete scene partitions separately.
+Initial red collection failed because the online module did not yet exist.
+
+Final local evidence, with source/tests frozen during the full runs:
+
+- Windows Python 3.11.2: **1414 passed, 3 existing symlink-permission skips**,
+  202.57 seconds; statement/branch coverage **97.85%**.
+- Linux Python 3.12.3: **1417 passed, no skips**, 187.74 seconds;
+  statement/branch coverage **97.88%**. Both used Pillow 12.3.0, PyAV 18.1.0
+  and pytest 9.1.1 and retained the original 95% coverage gate. The 102 new
+  tests comprise 89 unit and 13 real-video/integration/example cases.
+- The new online module has **98.70%** statement/branch coverage on both
+  platforms. No coverage exclusions or production limit relaxations were added.
+  Independent review covered the delayed decision horizon, bounded retained
+  state, source closure before draining, cleanup/control precedence and output
+  publication; these checks do not certify arbitrarily hand-constructed events.
+- The former rolling algorithm's arithmetic order matches a frozen independent
+  3001-score corpus across four radii. All three previous wire formats remain
+  unchanged. In addition to the two preceding golden fixtures, the complete
+  3617-byte pixel-change cache independently generated by the signed baseline
+  wheel has SHA256
+  `b863f789598b2517db4eb0bd63896e860f7d63c72990c2cd1e76050b7eba62e8`.
+- A fresh, non-editable wheel environment ran the actual generated VFR example
+  under Python `-I`, returning cuts `259/50` and `541/100` with observation
+  watermarks `527/100` and `553/100`, then a source-unverified EOF End. Its
+  32 package files matched source, wheel and installed files byte-for-byte;
+  the package was imported from that environment, not `src`. Wheel SHA256:
+  `a150c758760bcd4fc4f31d40063ba70e0edb4f3d2fb4e72c83aff87b9fb67e16`.
+- Whole-repository Ruff lint/format (96 files), strict Mypy (31 modules),
+  configured Bandit, frozen lock, whitespace, local documentation links,
+  source/wheel/sdist byte comparisons, strict Twine and wheel-contents checks
+  passed. These are local gates, not hosted CI results.
+
+Setup failures are retained rather than counted as tests: the first Linux
+inline shell launch exited 2 before any test output; a task-owned Bash script
+then created, hash-installed and tested a fresh scoped environment in one
+shell lifetime. The launch failure's cause was not asserted. The first offline
+isolated-wheel install could not resolve the absent cached PyAV wheel; the
+successful install used the exact existing lock's Pillow/PyAV versions and
+SHA256 hashes, without changing dependencies or the system environment.
+An initial Bandit invocation without the repository configuration reported
+existing exclusions; the actual configured gate above passed.
+
+Online fades, quorum/histogram coordination, live input, time-duration minimums,
+flash merging, richer backend/editor interoperability, learned detection and
+calibrated real-video accuracy/performance remain separate whole-repository gaps.

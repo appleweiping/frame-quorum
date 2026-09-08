@@ -211,6 +211,15 @@ dimensions and charges its own complete-frame work/byte budget. Offline replay
 shares candidate/minimum-scene and native partition policies but explicitly
 remains source-unverified and cannot become fresh evidence for splitting.
 
+The separate [online pixel stream](native-online.md) reuses the two-frame
+measurer, a shared bounded adaptive ring, single-point minimum-scene decisions
+and exact endpoint construction. It does not use the full-table collector or
+whole-source double hashing. A conservative confirmation horizon combines the
+adaptive right window and final-scene minimum before final statistics are
+delivered. It retains only bounded pending records and current-scene coordinates,
+with one owner thread and no producer queue. Its result and JSONL types stay
+distinct from cache records and trusted fresh scene-to-split input.
+
 ## Evaluation boundary
 
 The reproducible benchmark reuses production record validation and hard constraints, then changes only candidate
