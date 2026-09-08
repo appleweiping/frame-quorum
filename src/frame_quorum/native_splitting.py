@@ -8,7 +8,7 @@ import json
 import os
 import stat
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from fractions import Fraction
@@ -264,13 +264,17 @@ class _Encoder:
         budget: _ByteBudget,
         av: Any,
         owned: dict[Path, tuple[int, int]] | None = None,
+        *,
+        origin: Fraction | None = None,
+        time_base: Fraction | None = None,
+        mux_options: dict[str, str] | None = None,
     ) -> None:
         self.path, self.av = path, av
         self.expected: list[_Expected] = []
-        self.origin = first.presentation_time
+        self.origin = first.presentation_time if origin is None else origin
         # AVRational components are signed 32-bit. Leave room for muxer rescaling.
         _integer(first.time_base.denominator, "output tick denominator", 1, 1_000_000_000)
-        self.time_base = Fraction(1, first.time_base.denominator)
+        self.time_base = Fraction(1, first.time_base.denominator) if time_base is None else time_base
         self.width, self.height = first.width, first.height
         self.handle: BinaryIO | None = None
         self.container: Any = None
@@ -283,7 +287,11 @@ class _Encoder:
                 "w",
                 format="nut",
                 io_open=_deny_secondary,
-                options={"protocol_whitelist": "file", "avoid_negative_ts": "disabled"},
+                options={
+                    "protocol_whitelist": "file",
+                    "avoid_negative_ts": "disabled",
+                    **({} if mux_options is None else mux_options),
+                },
             )
             self.stream = self.container.add_stream("ffv1")
             self.stream.width, self.stream.height, self.stream.pix_fmt = first.width, first.height, "bgr0"
@@ -305,8 +313,7 @@ class _Encoder:
         with frame.image() as image:
             encoded = self.av.VideoFrame.from_image(image)
         encoded.pts, encoded.time_base = ticks.numerator, self.time_base
-        for packet in self.stream.encode(encoded):
-            self.container.mux(packet)
+        self._mux_packets(self.stream.encode(encoded))
         if self.writer.failed:
             raise OutputError("native output writer failed during encoding")
         self.expected.append(
@@ -323,8 +330,7 @@ class _Encoder:
     def finish(self) -> None:
         primary: BaseException | None = None
         try:
-            for packet in self.stream.encode():
-                self.container.mux(packet)
+            self._mux_packets(self.stream.encode())
         except BaseException as error:
             primary = error
             raise
@@ -335,6 +341,10 @@ class _Encoder:
 
     def close(self, primary: BaseException | None = None) -> None:
         _close_all((("container.close", self.container), ("file.close", self.handle)), primary)
+
+    def _mux_packets(self, packets: Iterable[Any]) -> None:
+        for packet in packets:
+            self.container.mux(packet)
 
 
 def _hash_file(path: Path, maximum: int) -> str:

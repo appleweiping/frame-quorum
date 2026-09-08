@@ -25,6 +25,8 @@ from .editing import render_edl, render_scene_timecodes
 from .errors import ConfigurationError, FrameQuorumError, OutputError
 from .exports import render_detection_csv
 from .models import AnimationConfig, ConcurrencyConfig, Frame, ScanConfig, SelectionConfig
+from .native_av import NativeAVSplitConfig
+from .native_av_splitting import split_native_av
 from .native_histograms import (
     analyze_native_histograms,
     capture_native_histograms,
@@ -239,6 +241,18 @@ def build_parser() -> argparse.ArgumentParser:
             "--" + name.replace("_", "-"), type=int, default=getattr(NativeSplitConfig(), name)
         )
     native_split.set_defaults(handler=_handle_native_split)
+
+    av_split = commands.add_parser("native-av-split", help="publish verified video and PCM16 audio clips")
+    av_split.add_argument("input", type=Path)
+    av_split.add_argument("--output-dir", "-o", type=Path, required=True)
+    av_split.add_argument(
+        "--clip", nargs=2, type=_exact_seconds, action="append", required=True, metavar=("START", "END")
+    )
+    for name in NativeAVSplitConfig.__dataclass_fields__:
+        av_split.add_argument(
+            "--" + name.replace("_", "-"), type=int, default=getattr(NativeAVSplitConfig(), name)
+        )
+    av_split.set_defaults(handler=_handle_native_av_split)
 
     scenes = commands.add_parser("scenes", help="detect scene boundaries and export per-frame statistics")
     scenes.add_argument("input", type=Path)
@@ -831,6 +845,17 @@ def _handle_native_split(args: argparse.Namespace) -> int:
         **{name: getattr(args, name) for name in NativeSplitConfig.__dataclass_fields__}
     )
     result = split_native_video(
+        args.input, args.output_dir, tuple(NativeClip(start, end) for start, end in args.clip), config
+    )
+    sys.stdout.write(json.dumps(result.to_dict(), sort_keys=True) + "\n")
+    return 0
+
+
+def _handle_native_av_split(args: argparse.Namespace) -> int:
+    config = NativeAVSplitConfig(
+        **{name: getattr(args, name) for name in NativeAVSplitConfig.__dataclass_fields__}
+    )
+    result = split_native_av(
         args.input, args.output_dir, tuple(NativeClip(start, end) for start, end in args.clip), config
     )
     sys.stdout.write(json.dumps(result.to_dict(), sort_keys=True) + "\n")
