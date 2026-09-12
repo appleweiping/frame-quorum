@@ -24,9 +24,9 @@ remaining differences.
 | [SceneManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/scene_manager.py): processing, scenes, images, callbacks | Offline image/native scene partitions, five-detector kernels, exact-PTS callbacks, qualified-candidate union/quorum and bounded online pixel decision events | Past-boundary RGB callbacks, per-scene image export, crop/downscale/interpolation controls, richer detector/plugin lifecycle and interoperability |
 | [StatsManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/stats_manager.py): metric registry, frame metrics, CSV export/tuning; CSV loading is explicitly deprecated in the frozen source | Fixed-schema diagnostics plus bounded canonical native measurement capture/import and same-kernel threshold replay, explicit cached provenance and native multi-detector CSV | Arbitrary metric registry, broader schema interoperability and tuning accuracy/performance corpus; no compatibility claim for the deprecated CSV loader |
 | [Video backends](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/docs/cli/backends.rst): OpenCV/PyAV/MoviePy; native PTS timing on supported VFR backends | Pillow images/animations, bounded FFmpeg extraction, incremental local PyAV video and fixed PCM16 decoding with exact PTS | Multi-file `VideoStreamConcat`, broader backend/codec compatibility evidence, general container inventory, file-like/network/live input contracts |
-| [Timecode APIs](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/common.py): `Timecode` / `FrameTimecode` conversion | Rational CFR timecodes, explicit PTS quantization, text drop/non-drop counters, native rational VFR scenes with unknown tails preserved | Broader interoperability and explicit native scene-to-editor conversion; binary SMPTE packing is not a frozen-reference public capability |
+| [Timecode APIs](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/common.py): `Timecode` / `FrameTimecode` conversion | Rational CFR timecodes, explicit PTS quantization, text drop/non-drop counters, native rational VFR scenes with unknown tails preserved and exact cuts-only OTIO coordinates | Broader editor interoperability and repeated-rewrite precision evidence; binary SMPTE packing is not a frozen-reference public capability |
 | [Video splitting](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/output/video.py): FFmpeg and mkvmerge paths | Video-only FFV1/NUT plus separate exact FFV1/PCM16 NUT clips, common audio-grid epoch, complete RGB/PTS/PCM/sample verification and no-replace publication | General audio format/channel/resampling policies, copy/mkvmerge modes, broader codecs/containers, explicit subtitle policy and external compatibility/throughput corpus |
-| [CLI output commands](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/_cli/commands.py): scene lists, images, HTML, QP/keyframes, EDL, FCP, OTIO | Image/native JSON scene reports, CSV stats, selected-frame CSV/contact sheet, exact CFR timing CSV, cuts-only EDL and native PTS measurement JSONL | Broader editor formats/conformance, image export per scene, HTML overview and keyframe encoder interchange |
+| [CLI output commands](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/_cli/commands.py): scene lists, images, HTML, QP/keyframes, EDL, FCP, OTIO | Image/native JSON scene reports, CSV stats, selected-frame CSV/contact sheet, exact CFR timing CSV, cuts-only EDL/OTIO and native PTS measurement JSONL | FCP and broader editor conformance, image export per scene, HTML overview and keyframe encoder interchange |
 | [CLI/configuration](https://github.com/Breakthrough/PySceneDetect/tree/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/_cli) | Explicit argparse commands, structured errors, atomic report bundle | Config file precedence, chained detector/output workflow and backend feature reporting |
 | [Reference tests and release tests](https://github.com/Breakthrough/PySceneDetect/tree/24953b0bf76af17c450bc143d330eea48fc5e276/tests) | Cross-platform Python CI, 95% coverage gate, analytic and real-Pillow regression inputs | Labeled video scene corpus, precision/recall and timestamp tolerances, native-codec matrix, decoder/format compatibility and performance benchmarks |
 
@@ -47,8 +47,10 @@ they do not reduce the whole-repository target or claim completed parity.
 - [`output/__init__.py`](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/output/__init__.py)
   contains CSV/HTML, EDL, Final Cut and OTIO exporters. Our existing optional
   OTIO `cmx_3600` **reader smoke test** checks EDL interchange only: it is not an
-  OTIO exporter. FCP7/FCPX, OTIO audio/video timelines, HTML scene overview,
-  QP/Aegisub keyframes and per-scene image output remain open.
+  OTIO exporter. The later cuts-only OTIO increment below adds an actual video
+  timeline and optional declared audio track. FCP7/FCPX, general multitrack
+  editing, HTML scene overview, QP/Aegisub keyframes and per-scene image output
+  remain open.
 - [`output/image.py`](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/output/image.py)
   provides per-scene image counts/margins, resize/interpolation, templates and
   encoding parameters. A selected-frame contact sheet does not implement this
@@ -442,3 +444,37 @@ mkvmerge, arbitrary-container exports, live/concatenated sources or durable
 fsync storage. The other rows remain open, especially reference-algorithm
 variants, per-scene image/editor workflows and calibrated real-world accuracy
 and compatibility evidence. Local test results are not whole-repository parity.
+
+## Cuts-only OTIO increment
+
+The new [OTIO workflow](otio-export.md) supplies actual standard timeline
+serialization and a native scene-to-editor command, not merely the previous
+CMX reader smoke. Complete unsampled native scene intervals retain their
+existing final-end admission. Explicit source origins, bounded common integer
+ticks, null unknown availability and caller-declared optional audio keep media
+and timing claims distinct. The core exports references; it neither renders
+media nor authenticates hand-constructed scene results or track declarations.
+
+Independent OpenTimelineIO 0.18.1 first-read acceptance passed nine vectors,
+including actual VFR RGB/PTS analysis. Eight writer/reader roundtrips matched;
+one negative-extreme decimal reparse discrepancy in that reader is explicitly
+retained in the contract and verification script, not called a passed roundtrip.
+Local full gates passed: Windows **1675 passed with three existing privilege
+skips** (1678 JUnit cases, zero failures/errors, 452.930 seconds); Linux Python
+**3.12.3** **1678 passed with no skips**, 120.87 seconds (JUnit 120.749 seconds).
+All 48 new cases are included. Combined statement/branch coverage is **98.0185%**
+on Windows (6275/6373 statements and 2085/2156 branches) and **98.0537%** on Linux
+(6276/6373 and 2087/2156), preserving the original 95% gate. All 192 exporter
+statements and 62 branches are covered. Linux source hashes were stable across
+the full run. Its earlier isolated-import environment failure is retained in
+[the verification record](otio-export.md), not counted as a successful run.
+
+Lint/format, strict types, security, frozen lock, whitespace, sdist-to-wheel,
+strict distribution metadata and wheel-content gates pass. The isolated native
+example and independent reader recheck use the actual installed wheel. All 35
+runtime files and 135 sdist source entries match current source; final artifacts
+are checked again after documentation updates. Hosted CI/CodeQL remains separate.
+
+This closes part of editor interchange only; concatenated decoding, other editor formats,
+transitions, robust arbitrary editor relinking and broader algorithm/accuracy
+and backend capability gaps remain open.
