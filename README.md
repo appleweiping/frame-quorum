@@ -106,6 +106,21 @@ original-frame counts. A final time remains unknown at EOF or a count limit;
 it is never inferred from FPS. This is offline `O(samples × detectors)` analysis,
 not constant-memory online scene detection. See [native scene contracts](docs/native-scenes.md).
 
+### Export a native scene cut list to OTIO
+
+```bash
+frame-quorum native-otio local.nut --media-origin 5 --final-end 57/10 \
+  --detectors luminance --output-dir ./editor-cut-list
+python examples/native_otio.py
+```
+
+The new directory contains `scenes.otio` and a digest/limits audit. Original PTS
+are mapped by the explicitly supplied media origin; unknown final duration is
+not guessed. Time fields use bounded exact integer ticks, unknown media
+availability stays null, and audio is included only by an explicit unverified
+caller declaration. This is editorial interchange, not media rendering or
+multi-track relinking certification. See [OTIO contracts](docs/otio-export.md).
+
 ### Tune native scene thresholds without decoding again
 
 ```bash

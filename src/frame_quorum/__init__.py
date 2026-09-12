@@ -95,6 +95,15 @@ from .native_video import (
     NativeVideoStatus,
     NativeVideoStream,
 )
+from .otio_export import (
+    OTIOCut,
+    OTIOExportConfig,
+    OTIOExportResult,
+    OTIOMedia,
+    otio_cuts_from_native,
+    render_otio,
+    write_otio_bundle,
+)
 from .pixel_changes import (
     PixelChange,
     PixelChangeConfig,
@@ -175,6 +184,10 @@ __all__ = [
     "NativeVideoMetadata",
     "NativeVideoStatus",
     "NativeVideoStream",
+    "OTIOCut",
+    "OTIOExportConfig",
+    "OTIOExportResult",
+    "OTIOMedia",
     "PixelChange",
     "PixelChangeConfig",
     "PixelChangeDetectionConfig",
@@ -214,6 +227,7 @@ __all__ = [
     "measure_pixel_change",
     "measure_pixel_histogram",
     "native_scene_clips",
+    "otio_cuts_from_native",
     "read_native_histograms",
     "read_native_measurements",
     "read_native_pixel_changes",
@@ -222,6 +236,7 @@ __all__ = [
     "render_detection_csv",
     "render_edl",
     "render_native_detection_csv",
+    "render_otio",
     "render_scene_timecodes",
     "run_benchmark",
     "scan_frames",
@@ -237,6 +252,7 @@ __all__ = [
     "write_native_pixel_change_stream",
     "write_native_pixel_changes",
     "write_native_replay",
+    "write_otio_bundle",
 ]
 
 __version__ = VERSION

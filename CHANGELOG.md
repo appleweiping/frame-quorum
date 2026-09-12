@@ -4,6 +4,15 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Exact cuts-only OTIO export
+
+- Add bounded standard OTIO timeline serialization with shared integer time
+  ticks, explicit source-origin mapping and unknown availability preserved.
+- Add optional caller-declared audio track, native scene conversion/CLI,
+  no-replace directory publication and an offline generated VFR example.
+- Preserve native scene/splitting completeness rules and prior cache/EDL wires;
+  no runtime dependency or version changes.
+
 ### Exact audio/video splitting
 
 - Add separate exact `split_native_av` / `NativeAVSplitConfig` / `native-av-split`

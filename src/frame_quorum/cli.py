@@ -59,6 +59,7 @@ from .native_pixel_changes import (
 from .native_scenes import NativeSceneConfig, detect_native_scenes
 from .native_splitting import NativeClip, NativeSplitConfig, split_native_video
 from .native_video import NativeVideoConfig, NativeVideoStream
+from .otio_export import OTIOExportConfig, OTIOMedia, otio_cuts_from_native, write_otio_bundle
 from .pixel_changes import PixelChangeConfig, PixelChangeLimits, PixelChangeWeights
 from .pixel_histograms import HistogramDetectionConfig, PixelHistogramConfig, PixelHistogramLimits
 from .reporting import scan_manifest, selection_manifest, write_json
@@ -166,6 +167,30 @@ def build_parser() -> argparse.ArgumentParser:
     _add_native_options(native_scenes)
     _add_detector_options(native_scenes)
     native_scenes.set_defaults(handler=_handle_native_scenes)
+
+    otio = commands.add_parser("native-otio", help="detect native scenes and export exact cuts-only OTIO")
+    _add_native_options(otio)
+    _add_detector_options(otio)
+    otio.add_argument("--output-dir", "-o", type=Path, required=True)
+    otio.add_argument(
+        "--media-origin", type=_exact_seconds, required=True, help="explicit native-to-editor zero"
+    )
+    otio.add_argument(
+        "--final-end", type=_exact_seconds, help="explicit exclusive endpoint for an unknown tail"
+    )
+    otio.add_argument(
+        "--available-start", type=_exact_seconds, help="caller-declared native media availability"
+    )
+    otio.add_argument("--available-end", type=_exact_seconds)
+    otio.add_argument(
+        "--include-audio", action="store_true", help="declare an unverified synchronous audio track"
+    )
+    otio.add_argument("--title", default="Frame Quorum")
+    for field in ("max_clips", "max_tick_rate", "max_output_bytes"):
+        otio.add_argument(
+            "--" + field.replace("_", "-"), type=int, default=getattr(OTIOExportConfig(), field)
+        )
+    otio.set_defaults(handler=_handle_native_otio)
 
     measure = commands.add_parser("native-measure", help="capture bounded replayable native measurements")
     _add_native_options(measure)
@@ -484,6 +509,38 @@ def _handle_native_scenes(args: argparse.Namespace) -> int:
         ),
     )
     sys.stdout.write(json.dumps(result.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n")
+    return 0
+
+
+def _handle_native_otio(args: argparse.Namespace) -> int:
+    options = OTIOExportConfig(
+        title=args.title,
+        include_audio=args.include_audio,
+        max_clips=args.max_clips,
+        max_tick_rate=args.max_tick_rate,
+        max_output_bytes=args.max_output_bytes,
+    )
+    media = OTIOMedia(args.input.absolute(), args.media_origin, args.available_start, args.available_end)
+    video = _native_config(args)
+    if video.frame_step != 1:
+        raise ConfigurationError("native OTIO export requires unsampled analysis")
+    if video.video_stream != 0:
+        raise ConfigurationError("native OTIO export supports only video_stream=0")
+    result = detect_native_scenes(
+        args.input,
+        NativeSceneConfig(
+            video=video,
+            detectors=_detector_configs(args),
+            minimum_votes=args.minimum_votes,
+            min_scene_samples=args.min_scene_samples,
+        ),
+    )
+    exported = write_otio_bundle(
+        otio_cuts_from_native(result, final_end=args.final_end), media, args.output_dir, options
+    )
+    sys.stdout.write(
+        json.dumps(exported.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n"
+    )
     return 0
 
 
