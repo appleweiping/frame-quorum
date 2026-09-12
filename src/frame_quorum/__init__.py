@@ -71,6 +71,11 @@ from .native_pixel_changes import (
     write_native_pixel_change_replay,
     write_native_pixel_changes,
 )
+from .native_scene_images import (
+    NativeSceneImageConfig,
+    NativeSceneImageResult,
+    export_native_scene_images,
+)
 from .native_scenes import (
     NativeDetectorStatistic,
     NativeScene,
@@ -173,6 +178,8 @@ __all__ = [
     "NativeReplayResult",
     "NativeScene",
     "NativeSceneConfig",
+    "NativeSceneImageConfig",
+    "NativeSceneImageResult",
     "NativeSceneResult",
     "NativeSceneSample",
     "NativeSceneStatistic",
@@ -220,6 +227,7 @@ __all__ = [
     "detect_shots",
     "detect_transitions",
     "evaluate_selection",
+    "export_native_scene_images",
     "extract_video_frames",
     "ffmpeg_available",
     "histogram_distance",

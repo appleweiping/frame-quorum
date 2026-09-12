@@ -56,9 +56,10 @@ from .native_pixel_changes import (
     write_native_pixel_change_replay,
     write_native_pixel_changes,
 )
+from .native_scene_images import NativeSceneImageConfig, export_native_scene_images
 from .native_scenes import NativeSceneConfig, detect_native_scenes
 from .native_splitting import NativeClip, NativeSplitConfig, split_native_video
-from .native_video import NativeVideoConfig, NativeVideoStream
+from .native_video import NativeVideoConfig, NativeVideoStream, _fraction
 from .otio_export import OTIOExportConfig, OTIOMedia, otio_cuts_from_native, write_otio_bundle
 from .pixel_changes import PixelChangeConfig, PixelChangeLimits, PixelChangeWeights
 from .pixel_histograms import HistogramDetectionConfig, PixelHistogramConfig, PixelHistogramLimits
@@ -167,6 +168,14 @@ def build_parser() -> argparse.ArgumentParser:
     _add_native_options(native_scenes)
     _add_detector_options(native_scenes)
     native_scenes.set_defaults(handler=_handle_native_scenes)
+
+    scene_images = commands.add_parser(
+        "native-scene-images", help="publish verified PNG/JPEG stills from observed native scene samples"
+    )
+    _add_native_options(scene_images)
+    _add_detector_options(scene_images)
+    _add_scene_image_options(scene_images)
+    scene_images.set_defaults(handler=_handle_native_scene_images)
 
     otio = commands.add_parser("native-otio", help="detect native scenes and export exact cuts-only OTIO")
     _add_native_options(otio)
@@ -339,6 +348,46 @@ def _add_measurement_options(parser: argparse.ArgumentParser) -> None:
         )
 
 
+def _add_scene_image_options(parser: argparse.ArgumentParser) -> None:
+    defaults = NativeSceneImageConfig()
+    parser.add_argument(
+        "--output-dir", "-o", type=Path, required=True, help="new directory in an existing parent"
+    )
+    parser.add_argument("--image-format", choices=("png", "jpeg"), default=defaults.image_format)
+    parser.add_argument(
+        "--interpolation",
+        choices=("nearest", "bilinear", "bicubic", "lanczos"),
+        default=defaults.interpolation,
+    )
+    parser.add_argument(
+        "--scale", type=_exact_scale, help="positive exact scale, exclusive with width/height"
+    )
+    parser.add_argument("--width", type=int, help="output pixel width; alone preserves stored-pixel aspect")
+    parser.add_argument("--height", type=int, help="output pixel height; alone preserves stored-pixel aspect")
+    for name, help_text in (
+        ("images_per_scene", "slots per scene; short scenes intentionally repeat observed samples"),
+        ("sample_margin", "margin in returned samples, not seconds or FPS-derived frames"),
+        ("png_compression", "PNG compression from 0 to 9; no quality loss"),
+        ("jpeg_quality", "JPEG quality from 0 to 100; even 100 is not a lossless guarantee"),
+        ("max_scenes", "maximum number of observed scenes"),
+        ("max_images", "maximum total image slots, including repeated samples"),
+        ("max_image_pixels", "maximum pixels per output image, distinct from decoded frame pixels"),
+        ("max_verification_pixels", "maximum aggregate image verification pixels, counting repeated slots"),
+        ("max_image_bytes", "maximum encoded bytes per image"),
+        ("max_output_bytes", "maximum total output bytes including manifest"),
+        ("max_manifest_bytes", "maximum manifest bytes"),
+    ):
+        parser.add_argument(
+            "--" + name.replace("_", "-"), type=int, default=getattr(defaults, name), help=help_text
+        )
+    parser.add_argument(
+        "--max-image-total-pixels",
+        type=int,
+        default=defaults.max_total_pixels,
+        help="aggregate transformed image pixels; --max-total-pixels limits each native decode pass",
+    )
+
+
 def _add_histogram_limits(parser: argparse.ArgumentParser) -> None:
     for name in PixelHistogramLimits.__dataclass_fields__:
         parser.add_argument(
@@ -496,6 +545,37 @@ def _native_config(args: argparse.Namespace) -> NativeVideoConfig:
         max_frame_pixels=args.max_frame_pixels,
         max_total_pixels=args.max_total_pixels,
     )
+
+
+def _exact_scale(text: str) -> Fraction:
+    try:
+        return _fraction(_exact_seconds(text), "scale", positive=True)
+    except (argparse.ArgumentTypeError, ConfigurationError) as error:
+        raise argparse.ArgumentTypeError(
+            "scale must be a positive bounded exact integer, decimal or fraction"
+        ) from error
+
+
+def _handle_native_scene_images(args: argparse.Namespace) -> int:
+    images = NativeSceneImageConfig(
+        **{
+            name: getattr(args, "max_image_total_pixels" if name == "max_total_pixels" else name)
+            for name in NativeSceneImageConfig.__dataclass_fields__
+        }
+    )
+    scenes = NativeSceneConfig(
+        video=_native_config(args),
+        detectors=_detector_configs(args),
+        minimum_votes=args.minimum_votes,
+        min_scene_samples=args.min_scene_samples,
+    )
+    result = export_native_scene_images(args.input, args.output_dir, scenes, images)
+    payload = json.dumps(result.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n"
+    written = sys.stdout.write(payload)
+    if type(written) is not int or written != len(payload):
+        raise OutputError("could not write complete native scene image result")
+    sys.stdout.flush()
+    return 0
 
 
 def _handle_native_scenes(args: argparse.Namespace) -> int:

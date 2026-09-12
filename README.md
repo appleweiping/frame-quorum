@@ -21,6 +21,12 @@ request, or hidden inference step. Every selected and rejected frame receives a 
 
 ## Why use it?
 
+For PNG/JPEG stills from actual scene samples, use `native-scene-images`.
+Its two-pass export checks source pixels and timing before publishing a new
+image/manifest directory. See [the exact contract](docs/native-scene-images.md)
+and run `python examples/native_scene_images.py` for a fully generated offline
+VFR demonstration with an independent pixel oracle.
+
 For bounded online video decisions, use `native-change-stream`: it reports
 exact-PTS HSV/gradient cuts with explicit confirmation delay, EOF and cancellation
 semantics, without retaining the whole video statistics table. See

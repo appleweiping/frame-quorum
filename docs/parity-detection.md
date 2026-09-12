@@ -478,3 +478,31 @@ are checked again after documentation updates. Hosted CI/CodeQL remains separate
 This closes part of editor interchange only; concatenated decoding, other editor formats,
 transitions, robust arbitrary editor relinking and broader algorithm/accuracy
 and backend capability gaps remain open.
+
+## Observed-sample scene image increment
+
+The [native image workflow](native-scene-images.md) now exports real scene PNG/
+JPEG stills with observed-sample selection, exact PTS metadata, short-scene
+repetition, bounded resizing and complete two-pass/source/staging verification.
+Its separate API/CLI publishes only a new directory. Unknown sample tails stay
+unknown; no FPS-based seek or guessed final duration is introduced. Existing
+detector, cache, timing and splitting contracts are unchanged.
+
+Final library/test full gates: Windows Python3.11.2 **1,999 passed, three existing
+privilege skips**, 182.91s; real Linux Python3.12.3 **2,002 passed, no skips**,
+96.20s. Coverage is **98.1197%** and **98.1531%**, respectively; the new module
+covers 306/306 statements and 116/116 branches. Both full runs verify unchanged
+151-file snapshots. All324 new repository cases are included. Independent
+review additionally verified nine Linux stdout/control failures, preserving
+already-published image directories. Formal REDs preceded staged-hash and
+stdout-acknowledgement fixes; the contract retains failure/environment history.
+
+Only final public documentation and a standalone offline example were added
+after those runs; library/tests stayed frozen. The example creates its own
+lossless VFR source and checks four resized stills against an independent
+integer pixel-center oracle. Final packaging and hosted results are separate.
+
+This closes a real per-scene image workflow, not concatenated/live sources,
+arbitrary backend/editor interchange, all reference detector variants, learned
+detection, calibrated real-video accuracy/performance or whole-repository scale.
+Those remaining capabilities and integrations stay open.

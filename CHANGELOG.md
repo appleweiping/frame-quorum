@@ -4,6 +4,15 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Native observed-sample scene images
+
+- Export bounded PNG/JPEG stills from real observed scene samples, retaining
+  exact source PTS, unknown tails, repeated short-scene samples and pixel hashes.
+- Verify both native passes and the complete staged image inventory before
+  no-replace publication; expose the API, CLI, resize controls and separate budgets.
+- Require complete stdout writes and flush acknowledgement without rolling back
+  published bundles; add an offline VFR example with an independent pixel oracle.
+
 ### Exact cuts-only OTIO export
 
 - Add bounded standard OTIO timeline serialization with shared integer time
