@@ -28,6 +28,16 @@ from .models import (
 )
 from .native_av import NativeAVSplitConfig
 from .native_av_splitting import NativeAVSplitResult, split_native_av
+from .native_concat import (
+    NativeConcatClip,
+    NativeConcatConfig,
+    NativeConcatDiagnostics,
+    NativeConcatFrame,
+    NativeConcatLimits,
+    NativeConcatSpan,
+    NativeConcatStream,
+    NativeConcatTimeline,
+)
 from .native_histograms import (
     HistogramStatistic,
     NativeHistogramMeasurements,
@@ -161,6 +171,14 @@ __all__ = [
     "NativeAVSplitConfig",
     "NativeAVSplitResult",
     "NativeClip",
+    "NativeConcatClip",
+    "NativeConcatConfig",
+    "NativeConcatDiagnostics",
+    "NativeConcatFrame",
+    "NativeConcatLimits",
+    "NativeConcatSpan",
+    "NativeConcatStream",
+    "NativeConcatTimeline",
     "NativeDetectorStatistic",
     "NativeHistogramMeasurements",
     "NativeHistogramReplayResult",

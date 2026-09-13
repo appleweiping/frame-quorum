@@ -21,6 +21,13 @@ request, or hidden inference step. Every selected and rejected frame receives a 
 
 ## Why use it?
 
+For real multi-source video on an exact caller-declared timeline, use the
+`NativeConcatStream` Python API. It keeps original PTS/RGB separate from composite
+positions, supports bounded seek/span mapping and owns one decoder at a time.
+See [the composition contract](docs/native-concat.md) and run
+`python examples/native_concat.py` for an offline two-source pixel oracle.
+Automatic-duration discovery and composite detector/export integration remain open.
+
 For PNG/JPEG stills from actual scene samples, use `native-scene-images`.
 Its two-pass export checks source pixels and timing before publishing a new
 image/manifest directory. See [the exact contract](docs/native-scene-images.md)

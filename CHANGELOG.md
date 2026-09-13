@@ -4,6 +4,15 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Exact caller-declared native composition
+
+- Decode multiple local videos serially on a frozen exact rational clip timeline,
+  preserving complete RGB/native PTS/timebase provenance, declared gaps and seams.
+- Add global stride, exact seek/span mapping, aggregate/per-source lifetime budgets
+  and explicit ownership/cleanup diagnostics without altering single-source wires.
+- Include lossless mixed-clock/rate fixtures, an offline direct-decoder oracle,
+  native control-priority and callback-reentrancy regression coverage.
+
 ### Native observed-sample scene images
 
 - Export bounded PNG/JPEG stills from real observed scene samples, retaining

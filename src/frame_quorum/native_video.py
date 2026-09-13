@@ -367,6 +367,12 @@ class NativeVideoStream(Iterator[NativeVideoFrame]):
             raise ConfigurationError("native video metadata is available only after successful setup")
         return self._metadata
 
+    def _captured_identity(self) -> tuple[int, int, int, int]:
+        """Internal read-only open identity for an owning composite stream."""
+        if self._fingerprint is None:
+            raise ConfigurationError("source identity requires a successfully captured file handle")
+        return self._fingerprint
+
     @property
     def diagnostics(self) -> NativeVideoDiagnostics:
         return NativeVideoDiagnostics(
@@ -458,6 +464,7 @@ class NativeVideoStream(Iterator[NativeVideoFrame]):
                 if isinstance(exc, Exception)
                 else NativeVideoStatus.INTERRUPTED,
                 suppress_errors=True,
+                primary=exc,
             )
             if isinstance(exc, (ConfigurationError, ScanError)) or not isinstance(exc, Exception):
                 raise
@@ -497,7 +504,7 @@ class NativeVideoStream(Iterator[NativeVideoFrame]):
                     NativeVideoStatus.ERROR if isinstance(exc, Exception) else NativeVideoStatus.INTERRUPTED
                 )
             )
-            self._finish(status, suppress_errors=True)
+            self._finish(status, suppress_errors=True, primary=exc)
             if isinstance(exc, (ConfigurationError, ScanError)) or not isinstance(exc, Exception):
                 raise
             raise ScanError("native video decode failed") from exc
@@ -588,7 +595,13 @@ class NativeVideoStream(Iterator[NativeVideoFrame]):
         self._last_time = None
         self._open()
 
-    def _finish(self, status: NativeVideoStatus, *, suppress_errors: bool = False) -> None:
+    def _finish(
+        self,
+        status: NativeVideoStatus,
+        *,
+        suppress_errors: bool = False,
+        primary: BaseException | None = None,
+    ) -> None:
         self._status = status
         failures: list[tuple[str, BaseException]] = []
         # Attempt every resource even if an earlier close failed. Keep failed
@@ -622,6 +635,9 @@ class NativeVideoStream(Iterator[NativeVideoFrame]):
                 else NativeVideoStatus.ERROR
             )
             if interrupts:
+                if primary is not None and not isinstance(primary, Exception):
+                    primary.add_note("native video cleanup also raised a control exception")
+                    return
                 raise interrupts[0]
             if not suppress_errors:
                 raise ScanError(
@@ -646,6 +662,7 @@ class NativeVideoStream(Iterator[NativeVideoFrame]):
                 self._finish(
                     NativeVideoStatus.INTERRUPTED if self._status is NativeVideoStatus.OPEN else self._status,
                     suppress_errors=True,
+                    primary=exc,
                 )
             else:
                 self.close()

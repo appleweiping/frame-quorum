@@ -621,3 +621,57 @@ def test_local_spelling_resolving_to_unc_is_rejected_before_file_setup(decoder, 
     with pytest.raises(ConfigurationError, match="UNC"):
         NativeVideoStream(decoder.source)
     assert not decoder.readers and not decoder.containers
+
+
+@pytest.mark.parametrize("stage", ["setup", "decode", "body"])
+@pytest.mark.parametrize("primary_kind", [KeyboardInterrupt, SystemExit, RuntimeError])
+@pytest.mark.parametrize("cleanup_kind", [KeyboardInterrupt, SystemExit])
+def test_original_control_precedence_across_all_cleanup_boundaries(
+    decoder, monkeypatch, stage, primary_kind, cleanup_kind
+):
+    primary = primary_kind("original operation failure")
+    secondary = cleanup_kind("secondary cleanup failure")
+    expected = primary if not isinstance(primary, Exception) else secondary
+    stream = NativeVideoStream(decoder.source)
+    armed = True
+    close_attempts = []
+    original_open = native._load_av().open
+
+    def open_with_close_failure(reader, **kwargs):
+        container = original_open(reader, **kwargs)
+        close = container.close
+
+        def cleanup():
+            close_attempts.append(True)
+            if armed:
+                raise secondary
+            close()
+
+        container.close = cleanup
+        return container
+
+    monkeypatch.setattr(native, "_load_av", lambda: SimpleNamespace(open=open_with_close_failure))
+
+    def failed_dimensions(*args):
+        raise primary
+
+    if stage == "setup":
+        monkeypatch.setattr(stream, "_dimensions", failed_dimensions)
+    elif stage == "decode":
+        decoder.frames[:] = [primary]
+    try:
+        with pytest.raises(BaseException) as caught, stream:
+            if stage == "body":
+                next(stream)
+                raise primary
+            next(stream)
+        assert caught.value is expected
+        assert close_attempts and decoder.readers[0].handle.closed
+        assert stream._file is None and stream._frames is None
+        assert stream._container is decoder.containers[0]
+        assert not stream.diagnostics.closed
+        assert stream.diagnostics.status is NativeVideoStatus.INTERRUPTED
+    finally:
+        armed = False
+        stream.close()
+    assert stream.diagnostics.closed and decoder.containers[0].closed
