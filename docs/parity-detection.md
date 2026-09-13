@@ -23,7 +23,7 @@ remaining differences.
 | [TransNet V2 source](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/detectors/transnet_v2.py) | No learned detector | Assess reference integration/support level and implement optional model lifecycle, batching, resource controls and a verified model evaluation; no silent model download |
 | [SceneManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/scene_manager.py): processing, scenes, images, callbacks | Offline image/native scene partitions, five-detector kernels, exact-PTS callbacks, qualified-candidate union/quorum and bounded online pixel decision events | Past-boundary RGB callbacks, per-scene image export, crop/downscale/interpolation controls, richer detector/plugin lifecycle and interoperability |
 | [StatsManager](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/stats_manager.py): metric registry, frame metrics, CSV export/tuning; CSV loading is explicitly deprecated in the frozen source | Fixed-schema diagnostics plus bounded canonical native measurement capture/import and same-kernel threshold replay, explicit cached provenance and native multi-detector CSV | Arbitrary metric registry, broader schema interoperability and tuning accuracy/performance corpus; no compatibility claim for the deprecated CSV loader |
-| [Video backends](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/docs/cli/backends.rst): OpenCV/PyAV/MoviePy; native PTS timing on supported VFR backends | Pillow images/animations, bounded FFmpeg extraction, incremental local PyAV video/PCM16 and real exact-declared multi-source composition | Automatic estimated concat timelines, composite detector/export integration, broader backend/codec compatibility, general container inventory and file-like/network/live input contracts |
+| [Video backends](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/docs/cli/backends.rst): OpenCV/PyAV/MoviePy; native PTS timing on supported VFR backends | Pillow images/animations, bounded FFmpeg extraction, incremental local PyAV video/PCM16, real exact-declared multi-source composition and offline representation-detector/quorum integration | Automatic estimated concat timelines, composite online/pixel/cache/export/CLI integration, broader backend/codec compatibility, general container inventory and file-like/network/live input contracts |
 | [Timecode APIs](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/common.py): `Timecode` / `FrameTimecode` conversion | Rational CFR timecodes, explicit PTS quantization, text drop/non-drop counters, native rational VFR scenes with unknown tails preserved and exact cuts-only OTIO coordinates | Broader editor interoperability and repeated-rewrite precision evidence; binary SMPTE packing is not a frozen-reference public capability |
 | [Video splitting](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/output/video.py): FFmpeg and mkvmerge paths | Video-only FFV1/NUT plus separate exact FFV1/PCM16 NUT clips, common audio-grid epoch, complete RGB/PTS/PCM/sample verification and no-replace publication | General audio format/channel/resampling policies, copy/mkvmerge modes, broader codecs/containers, explicit subtitle policy and external compatibility/throughput corpus |
 | [CLI output commands](https://github.com/Breakthrough/PySceneDetect/blob/24953b0bf76af17c450bc143d330eea48fc5e276/scenedetect/_cli/commands.py): scene lists, images, HTML, QP/keyframes, EDL, FCP, OTIO | Image/native JSON scene reports, CSV stats, selected-frame CSV/contact sheet, exact CFR timing CSV, cuts-only EDL/OTIO and native PTS measurement JSONL | FCP and broader editor conformance, image export per scene, HTML overview and keyframe encoder interchange |
@@ -576,3 +576,57 @@ strict Twine and wheel-content checks passed. The complete artifact audit matche
 prose follows the tests; distributions are rebuilt/re-audited after it. Hosted
 checks remain separate exact-head obligations. Generated FFV1 Matroska/NUT evidence
 does not establish arbitrary codec compatibility or real-world accuracy.
+
+## Declared-composition scene-analysis acceptance
+
+The [new analysis profile](native-concat-scenes.md) connects real owned sequential
+decoding to all five existing representation detectors and quorum. Adaptive and
+fade context crosses seams without automatic cuts; each selected measurement
+retains complete native identity separately from the declared composite clock.
+Scenes partition supplied samples and map to exact declared source spans, not
+verified physical coverage. Existing single-source kernels and wires retain
+their signed-baseline behavior: 576 complete result documents compare byte-for-byte.
+
+Independent review found necessary provenance and terminal-work invariants that
+the first implementation did not enforce. The retained formal pre-fix run has
+27 genuine failures and five positive cases, with no collection errors. Repairs
+bind endpoint reason, dimensions, global stride, activations, playback completion,
+cursor and pixel/counter consistency without forbidding legal repeated PTS,
+zero-duration scenes, exact decode/pixel ceilings or variable non-RGB dimensions.
+No extra EOF peek is introduced to make an exhausted output/RGB limit succeed.
+
+Final Windows CPython **3.11.2** full verification passed **3,058 tests**, with the
+same three genuine symbolic-link privilege skips, in **373.61 seconds**. Overall
+branch-inclusive coverage was **98.3069%** (7,589/7,690 statements and 2,572/2,646
+branches), preserving the 95% gate and prior exclusions. The new coordinator
+covered **374/374 statements and 170/170 branches**, with no exclusions. Both
+resource and runtime warnings were errors; all 169 delivery files stayed unchanged.
+
+Fresh cached-only Linux CPython **3.12.3** installed-wheel verification passed
+**755 selected tests**, no skips, in **47.47 seconds**: all 727 new cases plus
+16 prior concat and 12 prior native integration cases. New-core coverage was
+100%, above its unchanged 98% focused threshold. All 169 source, 38 installed
+runtime and 1,561 environment file identities remained unchanged; every package
+import came from the isolated installation. This is not Linux full-suite coverage.
+
+An independent fresh Windows CPython **3.14.5** installed lane passed **168 distinct
+asserted cases** in both normal and optimized modes: 82 positive boundary/work
+runs, 80 forged-terminal rejections and six actual no-peek limit failures with
+retained closed cleanup owners. The normal and optimized passes are repeated
+execution of the same 168 cases, not 336 different cases. All 169 source,
+38 runtime and 372 cached/installed dependency identities remained unchanged.
+
+Both installed platforms ran the generated real Matroska/NUT example under
+isolated normal and `-O` execution, checking complete native identities, exact
+cuts, declared tails and closed ownership. Existing cached PyAV 18.1.0/Pillow
+12.3.0 matched the lock. Whole Ruff/format, strict Mypy, Bandit, sdist-to-wheel
+build, strict Twine and wheel-content checks passed. The package audit matched
+38 runtime, four metadata and 159 sdist source files before this final prose;
+final distributions are rebuilt and byte-audited after it. Hosted checks remain
+separate exact-head obligations.
+
+This closes only the bounded offline representation-detector connection. The
+automatic estimated timeline, pixel/histogram online detectors, composite cache,
+per-scene still/audio/video export and CLI remain open. Neither finite generated
+fixtures nor test/line counts establish whole-repository functionality, substantive
+scale, labeled-video accuracy or broad native-codec compatibility.

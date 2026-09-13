@@ -38,6 +38,14 @@ from .native_concat import (
     NativeConcatStream,
     NativeConcatTimeline,
 )
+from .native_concat_scenes import (
+    NativeConcatScene,
+    NativeConcatSceneConfig,
+    NativeConcatSceneResult,
+    NativeConcatSceneSample,
+    NativeConcatSceneStatistic,
+    detect_native_concat_scenes,
+)
 from .native_histograms import (
     HistogramStatistic,
     NativeHistogramMeasurements,
@@ -176,6 +184,11 @@ __all__ = [
     "NativeConcatDiagnostics",
     "NativeConcatFrame",
     "NativeConcatLimits",
+    "NativeConcatScene",
+    "NativeConcatSceneConfig",
+    "NativeConcatSceneResult",
+    "NativeConcatSceneSample",
+    "NativeConcatSceneStatistic",
     "NativeConcatSpan",
     "NativeConcatStream",
     "NativeConcatTimeline",
@@ -240,6 +253,7 @@ __all__ = [
     "capture_native_histograms",
     "capture_native_measurements",
     "capture_native_pixel_changes",
+    "detect_native_concat_scenes",
     "detect_native_scenes",
     "detect_scenes",
     "detect_shots",

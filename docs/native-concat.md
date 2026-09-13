@@ -7,6 +7,10 @@ profile, not an automatic-duration playlist, media encoder or scene detector.
 It requires the existing optional `frame-quorum[video]` dependency; importing the
 package and constructing a timeline do not import PyAV or open video handles.
 
+For complete representation-level scene decisions over this map, use the separate
+[`detect_native_concat_scenes` pipeline](native-concat-scenes.md). The core stream
+continues to expose decoding/geometry without automatically running a detector.
+
 ```python
 from fractions import Fraction
 from frame_quorum import NativeConcatClip, NativeConcatConfig, NativeConcatStream

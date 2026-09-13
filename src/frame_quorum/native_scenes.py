@@ -365,13 +365,22 @@ def _aggregate(
     bool,
     Literal["sequence_start", "insufficient_votes", "short_previous_scene", "short_final_scene", "quorum"],
 ]:
+    return _aggregate_policy(position, count, previous, votes, config.minimum_votes, config.min_scene_samples)
+
+
+def _aggregate_policy(
+    position: int, count: int, previous: int, votes: int, minimum_votes: int, min_scene_samples: int
+) -> tuple[
+    bool,
+    Literal["sequence_start", "insufficient_votes", "short_previous_scene", "short_final_scene", "quorum"],
+]:
     if position == 0:
         return False, "sequence_start"
-    if votes < config.minimum_votes:
+    if votes < minimum_votes:
         return False, "insufficient_votes"
-    if position - previous < config.min_scene_samples:
+    if position - previous < min_scene_samples:
         return False, "short_previous_scene"
-    if count - position < config.min_scene_samples:
+    if count - position < min_scene_samples:
         return False, "short_final_scene"
     return True, "quorum"
 
@@ -513,17 +522,7 @@ def _analyze_native_samples(
 ) -> NativeSceneResult:
     """Single shared measurement-only kernel for fresh decoding and explicit replay."""
     metrics = [sample.metrics for sample in samples]
-    content = [0.0] + [content_distance(left, right) for left, right in pairwise(metrics)]
-    per_detector: list[list[NativeDetectorStatistic]] = []
-    for detector in options.detectors:
-        scores, candidates = _candidates(metrics, content if samples else [], detector)
-        decisions = _decisions(scores, candidates, detector)
-        per_detector.append(
-            [
-                NativeDetectorStatistic(detector.detector, scores[i], i in candidates, kept, reason)
-                for i, (kept, reason) in enumerate(decisions)
-            ]
-        )
+    content, per_detector = _detector_evidence(metrics, options.detectors)
     statistics = []
     previous = 0
     for position, sample in enumerate(samples):
@@ -536,6 +535,24 @@ def _analyze_native_samples(
             previous = position
     rows = tuple(statistics)
     return NativeSceneResult(options, metadata, diagnostics, rows, _scenes(rows, options, diagnostics))
+
+
+def _detector_evidence(
+    metrics: Sequence[FrameMetrics], detectors: tuple[DetectionConfig, ...]
+) -> tuple[list[float], list[list[NativeDetectorStatistic]]]:
+    """Shared representation arithmetic; provenance and partition policies stay outside."""
+    content = [0.0] + [content_distance(left, right) for left, right in pairwise(metrics)]
+    per_detector: list[list[NativeDetectorStatistic]] = []
+    for detector in detectors:
+        scores, candidates = _candidates(metrics, content if metrics else [], detector)
+        decisions = _decisions(scores, candidates, detector)
+        per_detector.append(
+            [
+                NativeDetectorStatistic(detector.detector, scores[i], i in candidates, kept, reason)
+                for i, (kept, reason) in enumerate(decisions)
+            ]
+        )
+    return content, per_detector
 
 
 __all__ = [

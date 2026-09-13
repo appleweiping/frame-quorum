@@ -26,7 +26,11 @@ For real multi-source video on an exact caller-declared timeline, use the
 positions, supports bounded seek/span mapping and owns one decoder at a time.
 See [the composition contract](docs/native-concat.md) and run
 `python examples/native_concat.py` for an offline two-source pixel oracle.
-Automatic-duration discovery and composite detector/export integration remain open.
+For scene decisions across these sources, use `detect_native_concat_scenes`.
+It shares all five representation detectors across seams while preserving native
+timestamps and rejecting incomplete budget prefixes. See [composite scene analysis](docs/native-concat-scenes.md)
+and run `python examples/native_concat_scenes.py` for the generated mixed-clock demo.
+Automatic-duration discovery, composite online/pixel/cache/export and CLI integration remain open.
 
 For PNG/JPEG stills from actual scene samples, use `native-scene-images`.
 Its two-pass export checks source pixels and timing before publishing a new

@@ -4,6 +4,15 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Complete scene analysis over declared native composition
+
+- Apply the five representation detectors and quorum across source seams without
+  resetting adaptive/fade context or inventing native timestamps or physical tails.
+- Preserve full scalar evidence, original native identities and exact declared
+  scene/span partitions; reject incomplete budget prefixes and inconsistent results.
+- Retain explicit same-thread cleanup retry ownership on failed acquisition,
+  callbacks and analysis; add real mixed-clock codec and independent arithmetic tests.
+
 ### Exact caller-declared native composition
 
 - Decode multiple local videos serially on a frozen exact rational clip timeline,
