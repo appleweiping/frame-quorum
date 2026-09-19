@@ -22,6 +22,7 @@ from PIL import Image
 from PIL import __version__ as pillow_version
 
 from .errors import ConfigurationError, OutputError, ScanError
+from .native_scene_overview import NativeSceneOverviewConfig, NativeSceneOverviewResult, _chunks
 from .native_scenes import (
     NativeSceneConfig,
     NativeSceneResult,
@@ -422,13 +423,46 @@ def export_native_scene_images(
     Each pass has the supplied native limits. EOF does not invent a terminal
     duration; count-limited observations remain explicitly count-limited.
     """
+    return cast(
+        NativeSceneImageResult,
+        _export_scene_image_bundle(source, output_dir, scene_config, image_config, None),
+    )
+
+
+def export_native_scene_overview(
+    source: str | Path,
+    output_dir: str | Path,
+    scene_config: NativeSceneConfig | None = None,
+    image_config: NativeSceneImageConfig | None = None,
+    overview_config: NativeSceneOverviewConfig | None = None,
+) -> NativeSceneOverviewResult:
+    """Publish verified scene stills, an offline HTML view and bound metadata together."""
+    overview = NativeSceneOverviewConfig() if overview_config is None else overview_config
+    return cast(
+        NativeSceneOverviewResult,
+        _export_scene_image_bundle(source, output_dir, scene_config, image_config, overview),
+    )
+
+
+def _export_scene_image_bundle(
+    source: str | Path,
+    output_dir: str | Path,
+    scene_config: NativeSceneConfig | None,
+    image_config: NativeSceneImageConfig | None,
+    overview_config: NativeSceneOverviewConfig | None,
+) -> NativeSceneImageResult | NativeSceneOverviewResult:
+    """One native replay, owned stage, byte budget, reconciliation and publication."""
     scenes_config = NativeSceneConfig() if scene_config is None else scene_config
     config = NativeSceneImageConfig() if image_config is None else image_config
     if type(scenes_config) is not NativeSceneConfig or type(config) is not NativeSceneImageConfig:
         raise ConfigurationError("configs must be NativeSceneConfig and NativeSceneImageConfig")
+    if overview_config is not None and type(overview_config) is not NativeSceneOverviewConfig:
+        raise ConfigurationError("overview_config must be NativeSceneOverviewConfig")
     scenes_config.__post_init__()
     scenes_config.video.__post_init__()
     config.__post_init__()
+    if overview_config is not None:
+        overview_config.__post_init__()
     target = _target_path(output_dir)
     path = _source_path(source)
     budget = _ByteBudget(config.max_output_bytes)
@@ -496,7 +530,7 @@ def export_native_scene_images(
                 document
             ):
                 writer.write(chunk.encode("utf-8"))
-        result = NativeSceneImageResult(
+        image_result = NativeSceneImageResult(
             target,
             len(scenes.scenes),
             len(slots),
@@ -505,7 +539,50 @@ def export_native_scene_images(
             _hash_file(stage / "manifest.json", config.max_manifest_bytes),
         )
         expected = {stage / row["file"]: (row["bytes"], row["sha256"]) for row in rows}
-        expected[stage / "manifest.json"] = (writer.size, result.manifest_sha256)
+        expected[stage / "manifest.json"] = (writer.size, image_result.manifest_sha256)
+        result: NativeSceneImageResult | NativeSceneOverviewResult = image_result
+        if overview_config is not None:
+            with _managed_file(stage / "index.html", owned) as handle:
+                html_writer = _Writer(handle, budget, overview_config.max_html_bytes)
+                for html_chunk in _chunks(
+                    scenes, rows, config.image_format, config.images_per_scene, overview_config
+                ):
+                    html_writer.write(html_chunk)
+            html_hash = _hash_file(stage / "index.html", overview_config.max_html_bytes)
+            expected[stage / "index.html"] = (html_writer.size, html_hash)
+            overview_document = {
+                "kind": "frame-quorum-native-scene-overview",
+                "schema_version": 1,
+                "coverage_policy": "returned-samples-only-v1",
+                "capture_status": scenes.diagnostics.status.value,
+                "config": overview_config.to_dict(),
+                "scene_count": len(scenes.scenes),
+                "image_count": len(slots),
+                "image_manifest": {
+                    "file": "manifest.json",
+                    "bytes": writer.size,
+                    "sha256": image_result.manifest_sha256,
+                },
+                "html": {"file": "index.html", "bytes": html_writer.size, "sha256": html_hash},
+            }
+            with _managed_file(stage / "overview.json", owned) as handle:
+                overview_writer = _Writer(handle, budget, overview_config.max_overview_bytes)
+                for chunk in json.JSONEncoder(ensure_ascii=True, allow_nan=False, sort_keys=True).iterencode(
+                    overview_document
+                ):
+                    overview_writer.write(chunk.encode("utf-8"))
+            overview_hash = _hash_file(stage / "overview.json", overview_config.max_overview_bytes)
+            expected[stage / "overview.json"] = (overview_writer.size, overview_hash)
+            result = NativeSceneOverviewResult(
+                target,
+                len(scenes.scenes),
+                len(slots),
+                unique_count,
+                budget.total,
+                image_result.manifest_sha256,
+                html_hash,
+                overview_hash,
+            )
         _reconcile(stage, stage_identity, owned, expected, budget)
         _check_source(path, fingerprint)
         publication_attempted = True
@@ -535,4 +612,9 @@ def export_native_scene_images(
         raise OutputError(message) from primary
 
 
-__all__ = ["NativeSceneImageConfig", "NativeSceneImageResult", "export_native_scene_images"]
+__all__ = [
+    "NativeSceneImageConfig",
+    "NativeSceneImageResult",
+    "export_native_scene_images",
+    "export_native_scene_overview",
+]

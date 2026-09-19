@@ -56,7 +56,12 @@ from .native_pixel_changes import (
     write_native_pixel_change_replay,
     write_native_pixel_changes,
 )
-from .native_scene_images import NativeSceneImageConfig, export_native_scene_images
+from .native_scene_images import (
+    NativeSceneImageConfig,
+    export_native_scene_images,
+    export_native_scene_overview,
+)
+from .native_scene_overview import NativeSceneOverviewConfig
 from .native_scenes import NativeSceneConfig, detect_native_scenes
 from .native_splitting import NativeClip, NativeSplitConfig, split_native_video
 from .native_video import NativeVideoConfig, NativeVideoStream, _fraction
@@ -176,6 +181,25 @@ def build_parser() -> argparse.ArgumentParser:
     _add_detector_options(scene_images)
     _add_scene_image_options(scene_images)
     scene_images.set_defaults(handler=_handle_native_scene_images)
+
+    scene_overview = commands.add_parser(
+        "native-scene-overview", help="publish verified scene stills and an offline HTML overview"
+    )
+    _add_native_options(scene_overview)
+    _add_detector_options(scene_overview)
+    _add_scene_image_options(scene_overview, overview=True)
+    overview_defaults = NativeSceneOverviewConfig()
+    scene_overview.add_argument("--title", default=overview_defaults.title)
+    scene_overview.add_argument("--columns", type=int, default=overview_defaults.columns)
+    scene_overview.add_argument("--image-width", type=int, help="HTML display width, not encoded pixel width")
+    scene_overview.add_argument(
+        "--image-height", type=int, help="HTML display height, not encoded pixel height"
+    )
+    scene_overview.add_argument("--max-html-bytes", type=int, default=overview_defaults.max_html_bytes)
+    scene_overview.add_argument(
+        "--max-overview-bytes", type=int, default=overview_defaults.max_overview_bytes
+    )
+    scene_overview.set_defaults(handler=_handle_native_scene_overview)
 
     otio = commands.add_parser("native-otio", help="detect native scenes and export exact cuts-only OTIO")
     _add_native_options(otio)
@@ -348,7 +372,7 @@ def _add_measurement_options(parser: argparse.ArgumentParser) -> None:
         )
 
 
-def _add_scene_image_options(parser: argparse.ArgumentParser) -> None:
+def _add_scene_image_options(parser: argparse.ArgumentParser, *, overview: bool = False) -> None:
     defaults = NativeSceneImageConfig()
     parser.add_argument(
         "--output-dir", "-o", type=Path, required=True, help="new directory in an existing parent"
@@ -374,7 +398,12 @@ def _add_scene_image_options(parser: argparse.ArgumentParser) -> None:
         ("max_image_pixels", "maximum pixels per output image, distinct from decoded frame pixels"),
         ("max_verification_pixels", "maximum aggregate image verification pixels, counting repeated slots"),
         ("max_image_bytes", "maximum encoded bytes per image"),
-        ("max_output_bytes", "maximum total output bytes including manifest"),
+        (
+            "max_output_bytes",
+            "maximum total output bytes including images, manifest, HTML and overview metadata"
+            if overview
+            else "maximum total output bytes including manifest",
+        ),
         ("max_manifest_bytes", "maximum manifest bytes"),
     ):
         parser.add_argument(
@@ -556,7 +585,7 @@ def _exact_scale(text: str) -> Fraction:
         ) from error
 
 
-def _handle_native_scene_images(args: argparse.Namespace) -> int:
+def _scene_image_configs(args: argparse.Namespace) -> tuple[NativeSceneConfig, NativeSceneImageConfig]:
     images = NativeSceneImageConfig(
         **{
             name: getattr(args, "max_image_total_pixels" if name == "max_total_pixels" else name)
@@ -569,11 +598,35 @@ def _handle_native_scene_images(args: argparse.Namespace) -> int:
         minimum_votes=args.minimum_votes,
         min_scene_samples=args.min_scene_samples,
     )
+    return scenes, images
+
+
+def _handle_native_scene_images(args: argparse.Namespace) -> int:
+    scenes, images = _scene_image_configs(args)
     result = export_native_scene_images(args.input, args.output_dir, scenes, images)
     payload = json.dumps(result.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n"
     written = sys.stdout.write(payload)
     if type(written) is not int or written != len(payload):
         raise OutputError("could not write complete native scene image result")
+    sys.stdout.flush()
+    return 0
+
+
+def _handle_native_scene_overview(args: argparse.Namespace) -> int:
+    scenes, images = _scene_image_configs(args)
+    overview = NativeSceneOverviewConfig(
+        title=args.title,
+        columns=args.columns,
+        image_width=args.image_width,
+        image_height=args.image_height,
+        max_html_bytes=args.max_html_bytes,
+        max_overview_bytes=args.max_overview_bytes,
+    )
+    result = export_native_scene_overview(args.input, args.output_dir, scenes, images, overview)
+    payload = json.dumps(result.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n"
+    written = sys.stdout.write(payload)
+    if type(written) is not int or written != len(payload):
+        raise OutputError("could not write complete native scene overview result")
     sys.stdout.flush()
     return 0
 

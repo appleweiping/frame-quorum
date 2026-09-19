@@ -4,6 +4,15 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Offline native scene HTML overview
+
+- Publish verified scene stills, an escaped offline HTML table and hash-bound
+  overview metadata together within one owned, byte-limited directory.
+- Keep the original image manifest and result unchanged while exposing a
+  separate API/CLI with bounded display options and explicit unknown tails.
+- Exercise generated VFR PNG/JPEG links, exact rational times, old image-byte
+  parity, output failures and an optimized standalone pixel oracle.
+
 ### Complete scene analysis over declared native composition
 
 - Apply the five representation detectors and quorum across source seams without

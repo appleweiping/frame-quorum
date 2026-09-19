@@ -38,6 +38,11 @@ image/manifest directory. See [the exact contract](docs/native-scene-images.md)
 and run `python examples/native_scene_images.py` for a fully generated offline
 VFR demonstration with an independent pixel oracle.
 
+For an offline HTML view of those verified stills and scene endpoints, use
+`native-scene-overview`. See [the overview contract](docs/native-scene-overview.md)
+and run `python examples/native_scene_overview.py` for generated VFR media,
+actual linked images and independent pixel checks.
+
 For bounded online video decisions, use `native-change-stream`: it reports
 exact-PTS HSV/gradient cuts with explicit confirmation delay, EOF and cancellation
 semantics, without retaining the whole video statistics table. See
