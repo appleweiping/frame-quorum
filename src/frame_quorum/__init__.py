@@ -44,6 +44,7 @@ from .native_concat import (
     NativeConcatStream,
     NativeConcatTimeline,
 )
+from .native_concat_scene_images import NativeConcatSceneImageResult, export_native_concat_scene_images
 from .native_concat_scenes import (
     NativeConcatScene,
     NativeConcatSceneConfig,
@@ -210,6 +211,7 @@ __all__ = [
     "NativeConcatLimits",
     "NativeConcatScene",
     "NativeConcatSceneConfig",
+    "NativeConcatSceneImageResult",
     "NativeConcatSceneResult",
     "NativeConcatSceneSample",
     "NativeConcatSceneStatistic",
@@ -287,6 +289,7 @@ __all__ = [
     "detect_transitions",
     "evaluate_selection",
     "export_loaded_scene_overview",
+    "export_native_concat_scene_images",
     "export_native_scene_images",
     "export_native_scene_overview",
     "extract_video_frames",

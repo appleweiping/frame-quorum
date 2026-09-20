@@ -30,7 +30,13 @@ For scene decisions across these sources, use `detect_native_concat_scenes`.
 It shares all five representation detectors across seams while preserving native
 timestamps and rejecting incomplete budget prefixes. See [composite scene analysis](docs/native-concat-scenes.md)
 and run `python examples/native_concat_scenes.py` for the generated mixed-clock demo.
-Automatic-duration discovery, composite online/pixel/cache/export and CLI integration remain open.
+For real PNG/JPEG images selected from those composite scene partitions, use
+`export_native_concat_scene_images`. Its independent second decode compares
+every returned RGB sample before an atomic no-replace directory publication.
+See [composite scene stills](docs/native-concat-scene-images.md) and run
+`python examples/native_concat_scene_images.py` for generated mixed-clock media.
+Automatic-duration discovery, composite online/pixel/cache/video/audio export
+and CLI integration remain open.
 
 For PNG/JPEG stills from actual scene samples, use `native-scene-images`.
 Its two-pass export checks source pixels and timing before publishing a new
