@@ -12,7 +12,10 @@ and `editor_import_verified: false` in `audit.json` are intentional.
 from fractions import Fraction
 from pathlib import Path
 from frame_quorum import (
-    FCPXMLExportConfig, OTIOCut, OTIOMedia, write_fcpxml_bundle,
+    FCPXMLExportConfig,
+    OTIOCut,
+    OTIOMedia,
+    write_fcpxml_bundle,
 )
 
 frame = Fraction(1001, 24000)
@@ -27,7 +30,9 @@ cuts = (
     OTIOCut(Fraction(5) + 10 * frame, Fraction(5) + 13 * frame),
 )
 result = write_fcpxml_bundle(
-    cuts, media, Path("new-editor-report"),
+    cuts,
+    media,
+    Path("new-editor-report"),
     FCPXMLExportConfig(frame_rate=Fraction(24000, 1001), width=1920, height=1080),
 )
 ```
