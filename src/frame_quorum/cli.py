@@ -61,6 +61,7 @@ from .native_pixel_changes import (
 from .native_qp import write_native_qp_bundle
 from .native_scene_images import (
     NativeSceneImageConfig,
+    export_loaded_scene_overview,
     export_native_scene_images,
     export_native_scene_overview,
 )
@@ -259,6 +260,24 @@ def build_parser() -> argparse.ArgumentParser:
     loaded_fcpxml.add_argument("--max-scenes", type=int, default=10_000)
     loaded_fcpxml.add_argument("--max-output-bytes", type=int, default=64 * 1024 * 1024)
     loaded_fcpxml.set_defaults(handler=_handle_native_load_fcpxml)
+
+    loaded_overview = commands.add_parser(
+        "native-load-overview", help="load scene-start CSV and publish verified stills with offline HTML"
+    )
+    _add_native_options(loaded_overview)
+    _add_scene_image_options(loaded_overview, overview=True)
+    loaded_overview.add_argument("--scene-csv", type=Path, required=True)
+    overview_defaults = NativeSceneOverviewConfig()
+    loaded_overview.add_argument("--title", default=overview_defaults.title)
+    loaded_overview.add_argument("--columns", type=int, default=overview_defaults.columns)
+    loaded_overview.add_argument("--image-width", type=int)
+    loaded_overview.add_argument("--image-height", type=int)
+    loaded_overview.add_argument("--max-html-bytes", type=int, default=overview_defaults.max_html_bytes)
+    loaded_overview.add_argument(
+        "--max-overview-bytes", type=int, default=overview_defaults.max_overview_bytes
+    )
+    loaded_overview.add_argument("--max-input-bytes", type=int, default=8 * 1024 * 1024)
+    loaded_overview.set_defaults(handler=_handle_native_load_overview)
 
     qp = commands.add_parser("native-qp", help="export complete native scene cuts as encoder QP I-frames")
     _add_native_options(qp)
@@ -669,6 +688,39 @@ def _handle_native_scene_overview(args: argparse.Namespace) -> int:
     written = sys.stdout.write(payload)
     if type(written) is not int or written != len(payload):
         raise OutputError("could not write complete native scene overview result")
+    sys.stdout.flush()
+    return 0
+
+
+def _handle_native_load_overview(args: argparse.Namespace) -> int:
+    images = NativeSceneImageConfig(
+        **{
+            name: getattr(args, "max_image_total_pixels" if name == "max_total_pixels" else name)
+            for name in NativeSceneImageConfig.__dataclass_fields__
+        }
+    )
+    overview = NativeSceneOverviewConfig(
+        title=args.title,
+        columns=args.columns,
+        image_width=args.image_width,
+        image_height=args.image_height,
+        max_html_bytes=args.max_html_bytes,
+        max_overview_bytes=args.max_overview_bytes,
+    )
+    result = export_loaded_scene_overview(
+        args.input,
+        args.scene_csv,
+        args.output_dir,
+        video_limits=_native_config(args),
+        image_config=images,
+        overview_config=overview,
+        max_input_bytes=args.max_input_bytes,
+        max_scenes=args.max_scenes,
+    )
+    payload = json.dumps(result.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n"
+    written = sys.stdout.write(payload)
+    if type(written) is not int or written != len(payload):
+        raise OutputError("could not write complete loaded scene overview result")
     sys.stdout.flush()
     return 0
 

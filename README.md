@@ -173,6 +173,21 @@ a video-only FCPXML timeline plus a CSV-bound audit. It does not claim editor
 import or durable source authentication. See
 [the CSV import contract](docs/native-load-fcpxml.md).
 
+### Review edited scene starts with stills and offline HTML
+
+```bash
+frame-quorum native-load-overview source.mkv --scene-csv scenes.csv \
+  --images-per-scene 2 --output-dir ./loaded-review
+python -I examples/native_load_overview.py
+```
+
+This maps strict one-based CSV starts to complete decoded-frame intervals,
+accepts genuine VFR for still selection, and checks every frame's RGB/PTS
+across two decode passes without running a detector. The resulting verified
+images, manifest and offline HTML appear together in a new directory. The
+last scene's exclusive duration endpoint stays unknown. See
+[the imported overview contract](docs/native-load-overview.md).
+
 ### Request encoder I-frames at native scene cuts
 
 ```bash

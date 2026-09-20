@@ -12,8 +12,9 @@ import os
 import stat
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from fractions import Fraction
+from itertools import pairwise
 from pathlib import Path
 from tempfile import mkdtemp
 from typing import Any, BinaryIO, cast
@@ -22,8 +23,10 @@ from PIL import Image
 from PIL import __version__ as pillow_version
 
 from .errors import ConfigurationError, OutputError, ScanError
+from .native_load_fcpxml import LoadedSceneStarts, load_native_scene_csv
 from .native_scene_overview import NativeSceneOverviewConfig, NativeSceneOverviewResult, _chunks
 from .native_scenes import (
+    NativeScene,
     NativeSceneConfig,
     NativeSceneResult,
     NativeSceneSample,
@@ -42,7 +45,11 @@ from .native_splitting import (
     _Writer,
 )
 from .native_video import (
+    NativeVideoConfig,
+    NativeVideoDiagnostics,
     NativeVideoFrame,
+    NativeVideoMetadata,
+    NativeVideoStatus,
     NativeVideoStream,
     _fraction,
     _integer,
@@ -153,11 +160,58 @@ class NativeSceneImageResult:
 
 
 @dataclass(frozen=True, slots=True)
+class LoadedSceneOverviewResult:
+    output_dir: Path
+    scene_count: int
+    image_count: int
+    unique_sample_count: int
+    total_output_bytes: int
+    csv_sha256: str
+    image_manifest_sha256: str
+    html_sha256: str
+    overview_sha256: str
+
+    def __post_init__(self) -> None:
+        NativeSceneOverviewResult(
+            self.output_dir,
+            self.scene_count,
+            self.image_count,
+            self.unique_sample_count,
+            self.total_output_bytes,
+            self.image_manifest_sha256,
+            self.html_sha256,
+            self.overview_sha256,
+        )
+        if (
+            type(self.csv_sha256) is not str
+            or len(self.csv_sha256) != 64
+            or any(character not in "0123456789abcdef" for character in self.csv_sha256)
+        ):
+            raise ConfigurationError("csv_sha256 must be a SHA-256 hex digest")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **asdict(self),
+            "output_dir": self.output_dir.as_posix(),
+            "detector_performed": False,
+            "source_content_authenticated": False,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class _Observed:
     sample: NativeSceneSample
     width: int
     height: int
     rgb_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class _LoadedSceneView:
+    metadata: NativeVideoMetadata
+    diagnostics: NativeVideoDiagnostics
+    scenes: tuple[NativeScene, ...]
+    cut_times: tuple[Fraction, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -195,7 +249,9 @@ def _dimensions(width: int, height: int, config: NativeSceneImageConfig) -> tupl
 
 
 def _plan(
-    scenes: NativeSceneResult, observed: tuple[_Observed, ...], config: NativeSceneImageConfig
+    scenes: NativeSceneResult | _LoadedSceneView,
+    observed: tuple[_Observed, ...],
+    config: NativeSceneImageConfig,
 ) -> tuple[_Slot, ...]:
     if not scenes.scenes:
         raise ScanError("native scene images require at least one observed sample")
@@ -252,6 +308,73 @@ def _capture(path: Path, config: NativeSceneConfig) -> tuple[NativeSceneResult, 
         config, metadata, stream.diagnostics, tuple(row.sample for row in records)
     )
     return result, records
+
+
+def _capture_loaded(
+    path: Path, video: NativeVideoConfig, loaded: LoadedSceneStarts
+) -> tuple[_LoadedSceneView, tuple[_Observed, ...]]:
+    """Observe all decoded frames; CSV, not detector statistics, owns cuts."""
+    observed: list[_Observed] = []
+    previous_time: Fraction | None = None
+    decode = replace(video, max_frames=video.max_frames + 1)
+    with NativeVideoStream(path, decode) as stream:
+        metadata = stream.metadata
+        for frame in stream:
+            position = len(observed)
+            if position >= video.max_frames:
+                raise ConfigurationError("loaded scene video exceeds configured frame limit")
+            if frame.decode_index != position or frame.sample_index != position or frame.generation != 0:
+                raise ScanError("loaded scene decode ordinals are not contiguous from zero")
+            if frame.width != metadata.width or frame.height != metadata.height:
+                raise ScanError("loaded scene video dimensions changed during decoding")
+            if previous_time is not None and frame.presentation_time <= previous_time:
+                raise ScanError("loaded scene presentation times must strictly increase")
+            previous_time = frame.presentation_time
+            observed.append(
+                _Observed(
+                    _measure_native_sample(frame),
+                    frame.width,
+                    frame.height,
+                    hashlib.sha256(frame.rgb).hexdigest(),
+                )
+            )
+            del frame
+    diagnostics = stream.diagnostics
+    count = len(observed)
+    if (
+        not observed
+        or diagnostics.status is not NativeVideoStatus.EOF
+        or not diagnostics.closed
+        or diagnostics.cleanup_errors
+        or diagnostics.generation != 0
+        or diagnostics.decoded_frames != count
+        or diagnostics.returned_frames != count
+    ):
+        raise ScanError("loaded scene overview requires complete error-free EOF")
+    if loaded.start_ordinals[-1] >= count:
+        raise ConfigurationError("scene CSV cut is outside the decoded video")
+    boundaries = (*loaded.start_ordinals, count)
+    scenes = tuple(
+        NativeScene(
+            ordinal,
+            start,
+            end,
+            observed[start].sample.presentation_time,
+            observed[end - 1].sample.presentation_time,
+            observed[end].sample.presentation_time if end < count else None,
+            "cut" if end < count else "unknown",
+        )
+        for ordinal, (start, end) in enumerate(pairwise(boundaries))
+    )
+    return (
+        _LoadedSceneView(
+            metadata,
+            diagnostics,
+            scenes,
+            tuple(observed[position].sample.presentation_time for position in loaded.start_ordinals[1:]),
+        ),
+        tuple(observed),
+    )
 
 
 def _matches(frame: NativeVideoFrame, original: _Observed) -> bool:
@@ -444,13 +567,50 @@ def export_native_scene_overview(
     )
 
 
+def export_loaded_scene_overview(
+    source: str | Path,
+    scene_csv: str | Path,
+    output_dir: str | Path,
+    *,
+    video_limits: NativeVideoConfig | None = None,
+    image_config: NativeSceneImageConfig | None = None,
+    overview_config: NativeSceneOverviewConfig | None = None,
+    max_input_bytes: int = 8 * 1024 * 1024,
+    max_scenes: int = 1000,
+) -> LoadedSceneOverviewResult:
+    """Publish imported-cut stills and offline HTML without running detection."""
+    if not isinstance(scene_csv, (str, Path)):
+        raise ConfigurationError("scene_csv must be a local path")
+    overview = NativeSceneOverviewConfig() if overview_config is None else overview_config
+    video = NativeVideoConfig() if video_limits is None else video_limits
+    return cast(
+        LoadedSceneOverviewResult,
+        _export_scene_image_bundle(
+            source,
+            output_dir,
+            None,
+            image_config,
+            overview,
+            scene_csv=scene_csv,
+            video_limits=video,
+            max_input_bytes=max_input_bytes,
+            max_scenes=max_scenes,
+        ),
+    )
+
+
 def _export_scene_image_bundle(
     source: str | Path,
     output_dir: str | Path,
     scene_config: NativeSceneConfig | None,
     image_config: NativeSceneImageConfig | None,
     overview_config: NativeSceneOverviewConfig | None,
-) -> NativeSceneImageResult | NativeSceneOverviewResult:
+    *,
+    scene_csv: str | Path | None = None,
+    video_limits: NativeVideoConfig | None = None,
+    max_input_bytes: int = 8 * 1024 * 1024,
+    max_scenes: int = 1000,
+) -> NativeSceneImageResult | NativeSceneOverviewResult | LoadedSceneOverviewResult:
     """One native replay, owned stage, byte budget, reconciliation and publication."""
     scenes_config = NativeSceneConfig() if scene_config is None else scene_config
     config = NativeSceneImageConfig() if image_config is None else image_config
@@ -463,6 +623,27 @@ def _export_scene_image_bundle(
     config.__post_init__()
     if overview_config is not None:
         overview_config.__post_init__()
+    loaded: LoadedSceneStarts | None = None
+    if scene_csv is not None:
+        if overview_config is None or type(video_limits) is not NativeVideoConfig:
+            raise ConfigurationError("loaded overview requires overview and native video configurations")
+        video_limits.__post_init__()
+        if (
+            video_limits.start is not None
+            or video_limits.end is not None
+            or video_limits.frame_step != 1
+            or video_limits.video_stream != 0
+            or video_limits.max_frames > 100_000
+            or video_limits.max_decoded_frames <= video_limits.max_frames
+        ):
+            raise ConfigurationError("loaded overview requires a bounded complete stream-zero video")
+        _integer(max_input_bytes, "max_input_bytes", 1, 8 * 1024 * 1024)
+        _integer(max_scenes, "max_scenes", 1, 1000)
+        loaded = load_native_scene_csv(
+            scene_csv,
+            max_input_bytes=max_input_bytes,
+            max_scenes=min(max_scenes, config.max_scenes),
+        )
     target = _target_path(output_dir)
     path = _source_path(source)
     budget = _ByteBudget(config.max_output_bytes)
@@ -472,22 +653,36 @@ def _export_scene_image_bundle(
     publication_attempted = False
     try:
         fingerprint = _fingerprint(path)
-        scenes, observed = _capture(path, scenes_config)
+        scenes, observed = (
+            _capture(path, scenes_config)
+            if loaded is None
+            else _capture_loaded(path, cast(NativeVideoConfig, video_limits), loaded)
+        )
         _check_source(path, fingerprint)
         slots = _plan(scenes, observed, config)
         av = _load_av()
         rows = []
         slot_index = 0
         count = 0
-        with NativeVideoStream(path, scenes_config.video) as replay:
+        replay_video = scenes_config.video
+        if loaded is not None:
+            limits = cast(NativeVideoConfig, video_limits)
+            replay_video = replace(limits, max_frames=limits.max_frames + 1)
+        with NativeVideoStream(path, replay_video) as replay:
             if replay.metadata != scenes.metadata:
-                raise ScanError("native scene image replay metadata differs from detection")
+                raise ScanError(
+                    "native scene image replay metadata differs from "
+                    + ("detection" if loaded is None else "CSV-guided capture")
+                )
             _check_source(path, fingerprint)
             stage = Path(mkdtemp(prefix=".frame-quorum-scene-images-", dir=target.parent))
             stage_identity = _identity(stage.lstat())
             for frame in replay:
                 if count >= len(observed) or not _matches(frame, observed[count]):
-                    raise ScanError("native scene image replay sample differs from detection")
+                    raise ScanError(
+                        "native scene image replay sample differs from "
+                        + ("detection" if loaded is None else "CSV-guided capture")
+                    )
                 while slot_index < len(slots) and slots[slot_index].position == count:
                     rows.append(
                         _save_slot(frame, observed[count], slots[slot_index], stage, config, budget, owned)
@@ -496,19 +691,41 @@ def _export_scene_image_bundle(
                 count += 1
                 del frame
         if count != len(observed) or slot_index != len(slots) or replay.diagnostics != scenes.diagnostics:
-            raise ScanError("native scene image replay completion differs from detection")
+            raise ScanError(
+                "native scene image replay completion differs from "
+                + ("detection" if loaded is None else "CSV-guided capture")
+            )
         if replay.metadata != scenes.metadata:
-            raise ScanError("native scene image replay final metadata differs from detection")
+            raise ScanError(
+                "native scene image replay final metadata differs from "
+                + ("detection" if loaded is None else "CSV-guided capture")
+            )
         _check_source(path, fingerprint)
         unique_count = len({slot.position for slot in slots})
         document = {
-            "kind": "frame-quorum-native-scene-images",
+            "kind": (
+                "frame-quorum-native-scene-images" if loaded is None else "frame-quorum-loaded-scene-images"
+            ),
             "schema_version": 1,
-            "selection": "observed-sample-endpoints-v1",
+            "selection": (
+                "observed-sample-endpoints-v1" if loaded is None else "imported-start-frame-ordinals-v1"
+            ),
             "source": scenes.metadata.to_dict(),
-            "scene_config": scenes_config.to_dict(),
+            **(
+                {
+                    "scene_config": scenes_config.to_dict(),
+                    "detection_diagnostics": scenes.diagnostics.to_dict(),
+                }
+                if loaded is None
+                else {
+                    "csv_sha256": loaded.csv_sha256,
+                    "csv_bytes": loaded.csv_bytes,
+                    "detector_performed": False,
+                    "source_content_authenticated": False,
+                    "capture_diagnostics": scenes.diagnostics.to_dict(),
+                }
+            ),
             "image_config": config.to_dict(),
-            "detection_diagnostics": scenes.diagnostics.to_dict(),
             "replay_diagnostics": replay.diagnostics.to_dict(),
             "decode_passes": 2,
             "verified_observed_sample_count": len(observed),
@@ -540,24 +757,50 @@ def _export_scene_image_bundle(
         )
         expected = {stage / row["file"]: (row["bytes"], row["sha256"]) for row in rows}
         expected[stage / "manifest.json"] = (writer.size, image_result.manifest_sha256)
-        result: NativeSceneImageResult | NativeSceneOverviewResult = image_result
+        result: NativeSceneImageResult | NativeSceneOverviewResult | LoadedSceneOverviewResult = image_result
         if overview_config is not None:
             with _managed_file(stage / "index.html", owned) as handle:
                 html_writer = _Writer(handle, budget, overview_config.max_html_bytes)
-                for html_chunk in _chunks(
-                    scenes, rows, config.image_format, config.images_per_scene, overview_config
-                ):
+                html_chunks = (
+                    _chunks(scenes, rows, config.image_format, config.images_per_scene, overview_config)
+                    if loaded is None
+                    else _chunks(
+                        scenes,
+                        rows,
+                        config.image_format,
+                        config.images_per_scene,
+                        overview_config,
+                        imported=True,
+                    )
+                )
+                for html_chunk in html_chunks:
                     html_writer.write(html_chunk)
             html_hash = _hash_file(stage / "index.html", overview_config.max_html_bytes)
             expected[stage / "index.html"] = (html_writer.size, html_hash)
             overview_document = {
-                "kind": "frame-quorum-native-scene-overview",
+                "kind": (
+                    "frame-quorum-native-scene-overview"
+                    if loaded is None
+                    else "frame-quorum-loaded-scene-overview"
+                ),
                 "schema_version": 1,
-                "coverage_policy": "returned-samples-only-v1",
+                "coverage_policy": (
+                    "returned-samples-only-v1" if loaded is None else "complete-imported-frame-partition-v1"
+                ),
                 "capture_status": scenes.diagnostics.status.value,
                 "config": overview_config.to_dict(),
                 "scene_count": len(scenes.scenes),
                 "image_count": len(slots),
+                **(
+                    {}
+                    if loaded is None
+                    else {
+                        "csv_sha256": loaded.csv_sha256,
+                        "detector_performed": False,
+                        "source_content_authenticated": False,
+                        "final_scene_endpoint_known": False,
+                    }
+                ),
                 "image_manifest": {
                     "file": "manifest.json",
                     "bytes": writer.size,
@@ -573,7 +816,7 @@ def _export_scene_image_bundle(
                     overview_writer.write(chunk.encode("utf-8"))
             overview_hash = _hash_file(stage / "overview.json", overview_config.max_overview_bytes)
             expected[stage / "overview.json"] = (overview_writer.size, overview_hash)
-            result = NativeSceneOverviewResult(
+            overview_result = NativeSceneOverviewResult(
                 target,
                 len(scenes.scenes),
                 len(slots),
@@ -582,6 +825,21 @@ def _export_scene_image_bundle(
                 image_result.manifest_sha256,
                 html_hash,
                 overview_hash,
+            )
+            result = (
+                overview_result
+                if loaded is None
+                else LoadedSceneOverviewResult(
+                    target,
+                    len(scenes.scenes),
+                    len(slots),
+                    unique_count,
+                    budget.total,
+                    loaded.csv_sha256,
+                    image_result.manifest_sha256,
+                    html_hash,
+                    overview_hash,
+                )
             )
         _reconcile(stage, stage_identity, owned, expected, budget)
         _check_source(path, fingerprint)

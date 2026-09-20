@@ -103,8 +103,10 @@ from .native_pixel_changes import (
 )
 from .native_qp import NativeQPResult, write_native_qp_bundle
 from .native_scene_images import (
+    LoadedSceneOverviewResult,
     NativeSceneImageConfig,
     NativeSceneImageResult,
+    export_loaded_scene_overview,
     export_native_scene_images,
     export_native_scene_overview,
 )
@@ -194,6 +196,7 @@ __all__ = [
     "HistogramMode",
     "HistogramStatistic",
     "LoadedFCPXMLResult",
+    "LoadedSceneOverviewResult",
     "LoadedSceneStarts",
     "NativeAVSplitConfig",
     "NativeAVSplitResult",
@@ -281,6 +284,7 @@ __all__ = [
     "detect_shots",
     "detect_transitions",
     "evaluate_selection",
+    "export_loaded_scene_overview",
     "export_native_scene_images",
     "export_native_scene_overview",
     "extract_video_frames",

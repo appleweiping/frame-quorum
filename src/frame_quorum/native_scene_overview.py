@@ -14,11 +14,11 @@ from dataclasses import asdict, dataclass
 from fractions import Fraction
 from html import escape
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from .errors import ConfigurationError, OutputError
-from .native_scenes import NativeSceneResult
-from .native_video import _integer
+from .native_scenes import NativeScene
+from .native_video import NativeVideoDiagnostics, NativeVideoMetadata, _integer
 
 _STYLE = """
 :root { color-scheme: light; font-family: system-ui, sans-serif; line-height: 1.5; }
@@ -49,6 +49,20 @@ _CSP = (
     + _STYLE_HASH
     + "'; object-src 'none'; base-uri 'none'; form-action 'none'"
 )
+
+
+class _SceneView(Protocol):
+    @property
+    def metadata(self) -> NativeVideoMetadata: ...
+
+    @property
+    def diagnostics(self) -> NativeVideoDiagnostics: ...
+
+    @property
+    def scenes(self) -> tuple[NativeScene, ...]: ...
+
+    @property
+    def cut_times(self) -> tuple[Fraction, ...]: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,11 +147,13 @@ def _pair_text(pair: dict[str, int]) -> str:
 
 
 def _chunks(
-    scenes: NativeSceneResult,
+    scenes: _SceneView,
     images: Sequence[dict[str, Any]],
     image_format: str,
     images_per_scene: int,
     config: NativeSceneOverviewConfig,
+    *,
+    imported: bool = False,
 ) -> Iterator[bytes]:
     """Yield escaped UTF-8 HTML without caller-controlled markup or resource URLs."""
     if len(images) != len(scenes.scenes) * images_per_scene:
@@ -182,36 +198,60 @@ def _chunks(
     yield emit('<meta name="viewport" content="width=device-width, initial-scale=1">\n')
     yield emit(f"<title>{title}</title><style>{_STYLE}</style></head><body>\n")
     yield emit(f"<header><h1>{title}</h1><p>Source: <code>{source}</code></p>")
-    yield emit(
-        f"<p>{len(scenes.scenes)} observed scenes; {len(images)} verified image slots; "
-        f"{scenes.diagnostics.returned_frames} returned samples. Capture status: <code>{status}</code>.</p>"
-    )
-    yield emit('<p class="notice">This report covers returned samples only. ')
+    if imported:
+        yield emit(
+            f"<p>{len(scenes.scenes)} imported scenes; {len(images)} verified image slots; "
+            f"{scenes.diagnostics.returned_frames} decoded frames. Capture status: <code>{status}</code>.</p>"
+        )
+        yield emit('<p class="notice">Scene boundaries come from the supplied Start Frame CSV. ')
+    else:
+        yield emit(
+            f"<p>{len(scenes.scenes)} observed scenes; {len(images)} verified image slots; "
+            f"{scenes.diagnostics.returned_frames} returned samples. "
+            f"Capture status: <code>{status}</code>.</p>"
+        )
+        yield emit('<p class="notice">This report covers returned samples only. ')
     if scenes.scenes[-1].end_time is None:
         yield emit("The final scene endpoint is unknown; no media duration is inferred.")
     else:
         yield emit("The final endpoint follows the requested analysis range, not inferred media duration.")
     yield emit("</p></header>\n")
-    yield emit('<section aria-labelledby="cuts"><h2 id="cuts">Observed cuts</h2>')
+    yield emit(
+        '<section aria-labelledby="cuts"><h2 id="cuts">Imported cuts</h2>'
+        if imported
+        else '<section aria-labelledby="cuts"><h2 id="cuts">Observed cuts</h2>'
+    )
     if scenes.cut_times:
         yield emit("<ol>")
         for cut in scenes.cut_times:
             yield emit(f"<li><time>{_rational(cut)} s</time></li>")
         yield emit("</ol>")
     else:
-        yield emit("<p>No accepted cut in the observed samples.</p>")
+        yield emit(
+            "<p>No imported cut in the decoded frames.</p>"
+            if imported
+            else "<p>No accepted cut in the observed samples.</p>"
+        )
     yield emit("</section>\n")
     yield emit('<section aria-labelledby="scenes"><h2 id="scenes">Scenes and stills</h2>')
     yield emit('<div class="table-scroll"><table>')
-    yield emit("<caption>Observed scene intervals and verified still images</caption>")
-    yield emit('<thead><tr><th scope="col">Scene</th><th scope="col">Returned sample range</th>')
+    yield emit(
+        "<caption>Imported scene intervals and verified still images</caption>"
+        if imported
+        else "<caption>Observed scene intervals and verified still images</caption>"
+    )
+    yield emit(
+        '<thead><tr><th scope="col">Scene</th><th scope="col">Decoded frame range</th>'
+        if imported
+        else '<thead><tr><th scope="col">Scene</th><th scope="col">Returned sample range</th>'
+    )
     yield emit('<th scope="col">Start</th><th scope="col">Last observed</th>')
     yield emit('<th scope="col">End</th><th scope="col">Verified stills</th></tr></thead><tbody>\n')
     for scene in scenes.scenes:
         yield emit(
             f'<tr><th scope="row">{scene.ordinal + 1}</th>'
             f"<td>{scene.start_position}-{scene.end_position - 1} "
-            f"({scene.sample_count} samples)</td>"
+            f"({scene.sample_count} {'frames' if imported else 'samples'})</td>"
         )
         yield emit(f"<td><time>{_rational(scene.start_time)} s</time></td>")
         yield emit(f"<td><time>{_rational(scene.last_sample_time)} s</time></td>")
@@ -228,7 +268,8 @@ def _chunks(
             sample_time = _pair_text(row["source_time"])
             alt = escape(
                 f"Scene {scene.ordinal + 1}, still {image_index + 1}, "
-                f"returned sample {row['source_sample_index']} at {sample_time} seconds",
+                f"{'decoded frame' if imported else 'returned sample'} "
+                f"{row['source_sample_index']} at {sample_time} seconds",
                 quote=True,
             )
             if config.image_width is None and config.image_height is None:
@@ -239,7 +280,8 @@ def _chunks(
                 )
             yield emit(f'<figure><img src="{name}" alt="{alt}"{dimensions} loading="lazy">')
             yield emit(
-                f"<figcaption>Still {image_index + 1}: sample {row['source_sample_index']}; "
+                f"<figcaption>Still {image_index + 1}: "
+                f"{'frame' if imported else 'sample'} {row['source_sample_index']}; "
                 f"PTS {row['source_pts']}; <time>{sample_time} s</time></figcaption></figure>"
             )
         yield emit("</div></td></tr>\n")

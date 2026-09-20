@@ -4,6 +4,15 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### CSV-guided scene stills and offline review
+
+- Import strict one-based `Start Frame` scene-list CSV into bounded, full-decode
+  VFR-aware image slots and an escaped offline HTML overview, without running
+  a detector or fabricating detector statistics.
+- Verify every frame's index, exact PTS, dimensions and RGB hash on a second
+  full decode, then publish reconciled stills/manifest/HTML/audit atomically
+  without replacing a destination. Keep the final duration endpoint unknown.
+
 ### Frame-aligned FCPXML 1.9 cuts-only export
 
 - Add a bounded, original single-asset video-only FCPXML timeline with exact
