@@ -63,6 +63,12 @@ from .native_histograms import (
     write_native_histogram_replay,
     write_native_histograms,
 )
+from .native_load_fcpxml import (
+    LoadedFCPXMLResult,
+    LoadedSceneStarts,
+    load_native_scene_csv,
+    write_loaded_fcpxml_bundle,
+)
 from .native_measurements import (
     NativeMeasurementLimits,
     NativeMeasurements,
@@ -187,6 +193,8 @@ __all__ = [
     "HistogramDetectionConfig",
     "HistogramMode",
     "HistogramStatistic",
+    "LoadedFCPXMLResult",
+    "LoadedSceneStarts",
     "NativeAVSplitConfig",
     "NativeAVSplitResult",
     "NativeClip",
@@ -279,6 +287,7 @@ __all__ = [
     "ffmpeg_available",
     "histogram_distance",
     "iter_native_pixel_change_jsonl",
+    "load_native_scene_csv",
     "measure_pixel_change",
     "measure_pixel_histogram",
     "native_scene_clips",
@@ -302,6 +311,7 @@ __all__ = [
     "split_native_video",
     "write_decision_csv",
     "write_fcpxml_bundle",
+    "write_loaded_fcpxml_bundle",
     "write_native_histogram_replay",
     "write_native_histograms",
     "write_native_measurements",

@@ -35,6 +35,7 @@ from .native_histograms import (
     write_native_histogram_replay,
     write_native_histograms,
 )
+from .native_load_fcpxml import write_loaded_fcpxml_bundle
 from .native_measurements import (
     NativeMeasurementLimits,
     analyze_native_measurements,
@@ -244,6 +245,20 @@ def build_parser() -> argparse.ArgumentParser:
     fcpxml.add_argument("--max-clips", type=int, default=10_000)
     fcpxml.add_argument("--max-output-bytes", type=int, default=64 * 1024 * 1024)
     fcpxml.set_defaults(handler=_handle_native_fcpxml)
+
+    loaded_fcpxml = commands.add_parser(
+        "native-load-fcpxml", help="load scene-start CSV and export an exact CFR FCPXML timeline"
+    )
+    _add_native_options(loaded_fcpxml)
+    loaded_fcpxml.add_argument("--scene-csv", type=Path, required=True)
+    loaded_fcpxml.add_argument("--frame-rate", type=_exact_seconds, required=True)
+    loaded_fcpxml.add_argument("--final-end", type=_exact_seconds, required=True)
+    loaded_fcpxml.add_argument("--output-dir", "-o", type=Path, required=True)
+    loaded_fcpxml.add_argument("--title", default="Frame Quorum")
+    loaded_fcpxml.add_argument("--max-input-bytes", type=int, default=8 * 1024 * 1024)
+    loaded_fcpxml.add_argument("--max-scenes", type=int, default=10_000)
+    loaded_fcpxml.add_argument("--max-output-bytes", type=int, default=64 * 1024 * 1024)
+    loaded_fcpxml.set_defaults(handler=_handle_native_load_fcpxml)
 
     qp = commands.add_parser("native-qp", help="export complete native scene cuts as encoder QP I-frames")
     _add_native_options(qp)
@@ -735,6 +750,30 @@ def _handle_native_fcpxml(args: argparse.Namespace) -> int:
     written = sys.stdout.write(payload)
     if type(written) is not int or written != len(payload):
         raise OutputError("could not write complete native FCPXML result")
+    sys.stdout.flush()
+    return 0
+
+
+def _handle_native_load_fcpxml(args: argparse.Namespace) -> int:
+    video = _native_config(args)
+    if video.start is not None or video.end is not None or video.frame_step != 1 or video.video_stream != 0:
+        raise ConfigurationError("CSV FCPXML requires full-source, unsampled video stream zero")
+    exported = write_loaded_fcpxml_bundle(
+        args.input,
+        args.scene_csv,
+        args.output_dir,
+        frame_rate=args.frame_rate,
+        final_end=args.final_end,
+        video_limits=video,
+        title=args.title,
+        max_input_bytes=args.max_input_bytes,
+        max_scenes=args.max_scenes,
+        max_output_bytes=args.max_output_bytes,
+    )
+    payload = json.dumps(exported.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n"
+    written = sys.stdout.write(payload)
+    if type(written) is not int or written != len(payload):
+        raise OutputError("could not write complete loaded FCPXML result")
     sys.stdout.flush()
     return 0
 

@@ -159,6 +159,20 @@ declared, and off-frame cuts are rejected. The XML references the absolute
 source path; review it before sharing. Final Cut Pro import is not yet verified.
 See [FCPXML contracts](docs/fcpxml-export.md).
 
+### Import edited scene starts into FCPXML
+
+```bash
+frame-quorum native-load-fcpxml source.nut --scene-csv scenes.csv \
+  --frame-rate 25 --final-end 7/25 --output-dir ./loaded-editor-xml
+python -I examples/native_load_fcpxml.py
+```
+
+This reads one-based `Start Frame` rows from a bounded scene-list CSV, verifies
+complete exact-CFR decoded ordinals without calling a detector, and publishes
+a video-only FCPXML timeline plus a CSV-bound audit. It does not claim editor
+import or durable source authentication. See
+[the CSV import contract](docs/native-load-fcpxml.md).
+
 ### Request encoder I-frames at native scene cuts
 
 ```bash
