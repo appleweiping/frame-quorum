@@ -53,8 +53,11 @@ from frame_quorum import load_native_scene_csv, write_loaded_fcpxml_bundle
 starts = load_native_scene_csv("scenes.csv")
 print(starts.start_ordinals)
 published = write_loaded_fcpxml_bundle(
-    "source.nut", "scenes.csv", "new-editor-xml",
-    frame_rate=Fraction(25), final_end=Fraction(7, 25),
+    "source.nut",
+    "scenes.csv",
+    "new-editor-xml",
+    frame_rate=Fraction(25),
+    final_end=Fraction(7, 25),
 )
 ```
 
