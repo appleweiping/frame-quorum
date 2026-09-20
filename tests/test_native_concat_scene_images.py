@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import replace
 from fractions import Fraction
 
@@ -99,8 +100,15 @@ def _proxy_replay(monkeypatch, *, frame_change=None, diagnostic_change=None):
 
 def test_signed_main_v1_wire_byte_baselines_remain_unchanged(tmp_path):
     # Recorded by tests/_v1_wire_snapshot.py against the signed main commit
-    # 211e611b7535d46308e8ff000d5caa71a10e8082, then independently
-    # reproduced on this branch. Digest covers all normalized wire bytes.
+    # 211e611b7535d46308e8ff000d5caa71a10e8082 on both Windows and Linux,
+    # then independently reproduced on this branch. PNG compression bytes
+    # differ across those platforms, so keep separate exact wire digests.
+    image_hashes = {
+        "win32": "238fced2a4d11409fbf9bd56e610975e5cb086cebb3d86d8011d714615484a49",
+        "linux": "a01ec47bd8487e830db4065059303b4e655e2910ef325c036faf55ebc08415c5",
+    }
+    if sys.platform not in image_hashes:
+        pytest.skip("signed-main PNG wire baseline is not recorded for this platform")
     assert digest_summary(tmp_path) == {
         "concat_scene_v1": {
             "bytes": 7588,
@@ -108,7 +116,7 @@ def test_signed_main_v1_wire_byte_baselines_remain_unchanged(tmp_path):
         },
         "single_source_image_v1": {
             "bytes": 4524,
-            "sha256": "238fced2a4d11409fbf9bd56e610975e5cb086cebb3d86d8011d714615484a49",
+            "sha256": image_hashes[sys.platform],
         },
     }
 
