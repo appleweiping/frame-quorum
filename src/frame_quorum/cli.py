@@ -57,6 +57,7 @@ from .native_pixel_changes import (
     write_native_pixel_change_replay,
     write_native_pixel_changes,
 )
+from .native_qp import write_native_qp_bundle
 from .native_scene_images import (
     NativeSceneImageConfig,
     export_native_scene_images,
@@ -65,7 +66,7 @@ from .native_scene_images import (
 from .native_scene_overview import NativeSceneOverviewConfig
 from .native_scenes import NativeSceneConfig, detect_native_scenes
 from .native_splitting import NativeClip, NativeSplitConfig, split_native_video
-from .native_video import NativeVideoConfig, NativeVideoStream, _fraction
+from .native_video import NativeVideoConfig, NativeVideoStream, _fraction, _integer
 from .otio_export import OTIOExportConfig, OTIOMedia, otio_cuts_from_native, write_otio_bundle
 from .pixel_changes import PixelChangeConfig, PixelChangeLimits, PixelChangeWeights
 from .pixel_histograms import HistogramDetectionConfig, PixelHistogramConfig, PixelHistogramLimits
@@ -243,6 +244,13 @@ def build_parser() -> argparse.ArgumentParser:
     fcpxml.add_argument("--max-clips", type=int, default=10_000)
     fcpxml.add_argument("--max-output-bytes", type=int, default=64 * 1024 * 1024)
     fcpxml.set_defaults(handler=_handle_native_fcpxml)
+
+    qp = commands.add_parser("native-qp", help="export complete native scene cuts as encoder QP I-frames")
+    _add_native_options(qp)
+    _add_detector_options(qp)
+    qp.add_argument("--output-dir", "-o", type=Path, required=True)
+    qp.add_argument("--max-output-bytes", type=int, default=32 * 1024 * 1024)
+    qp.set_defaults(handler=_handle_native_qp)
 
     measure = commands.add_parser("native-measure", help="capture bounded replayable native measurements")
     _add_native_options(measure)
@@ -727,6 +735,31 @@ def _handle_native_fcpxml(args: argparse.Namespace) -> int:
     written = sys.stdout.write(payload)
     if type(written) is not int or written != len(payload):
         raise OutputError("could not write complete native FCPXML result")
+    sys.stdout.flush()
+    return 0
+
+
+def _handle_native_qp(args: argparse.Namespace) -> int:
+    video = _native_config(args)
+    if video.start is not None or video.end is not None or video.frame_step != 1:
+        raise ConfigurationError("native QP export requires unwindowed, unsampled full-source analysis")
+    if video.video_stream != 0:
+        raise ConfigurationError("native QP export supports only video_stream=0")
+    _integer(args.max_output_bytes, "max_output_bytes", 1, 32 * 1024 * 1024)
+    result = detect_native_scenes(
+        args.input,
+        NativeSceneConfig(
+            video=video,
+            detectors=_detector_configs(args),
+            minimum_votes=args.minimum_votes,
+            min_scene_samples=args.min_scene_samples,
+        ),
+    )
+    exported = write_native_qp_bundle(result, args.output_dir, max_output_bytes=args.max_output_bytes)
+    payload = json.dumps(exported.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n"
+    written = sys.stdout.write(payload)
+    if type(written) is not int or written != len(payload):
+        raise OutputError("could not write complete native QP result")
     sys.stdout.flush()
     return 0
 

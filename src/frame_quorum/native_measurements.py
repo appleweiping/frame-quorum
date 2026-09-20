@@ -612,11 +612,55 @@ def _read_cache(
         raise ScanError("native measurement cache read failed") from error
 
 
+def _verify_bundle_file(path: Path, expected_identity: tuple[int, int], size: int, digest: str) -> None:
+    """Check an owned closed stage file against a caller's precomputed bytes."""
+    before = path.lstat()
+    if not stat.S_ISREG(before.st_mode) or _identity(before) != expected_identity or before.st_size != size:
+        raise OutputError("staged bundle file identity or size differs from expected")
+    actual = hashlib.sha256()
+    observed = 0
+    with path.open("rb") as handle:
+        opened = os.fstat(handle.fileno())
+        if not stat.S_ISREG(opened.st_mode) or _identity(opened) != expected_identity:
+            raise OutputError("staged bundle file changed during verification open")
+        while chunk := handle.read(1024 * 1024):
+            observed += len(chunk)
+            if observed > size:
+                raise OutputError("staged bundle file exceeds expected size")
+            actual.update(chunk)
+    after = path.lstat()
+    if (
+        not stat.S_ISREG(after.st_mode)
+        or _identity(after) != expected_identity
+        or after.st_size != size
+        or observed != size
+        or actual.hexdigest() != digest
+    ):
+        raise OutputError("staged bundle file digest or identity differs from expected")
+
+
 def _bundle(
     output_dir: str | Path,
     files: tuple[tuple[str, Iterator[bytes]], ...],
     maximum: int,
+    *,
+    expected_files: tuple[tuple[str, int, str], ...] | None = None,
 ) -> Path:
+    if expected_files is not None and (
+        type(expected_files) is not tuple
+        or len(expected_files) != len(files)
+        or any(
+            type(item) is not tuple
+            or len(item) != 3
+            or item[0] != files[index][0]
+            or type(item[1]) is not int
+            or not 0 <= item[1] <= maximum
+            or type(item[2]) is not str
+            or _SHA256.fullmatch(item[2]) is None
+            for index, item in enumerate(expected_files)
+        )
+    ):
+        raise ConfigurationError("expected bundle files must match ordered names and bounded digests")
     target = _target_path(output_dir)
     stage = Path(tempfile.mkdtemp(prefix=".frame-quorum-measurements-", dir=target.parent))
     try:
@@ -639,6 +683,13 @@ def _bundle(
                         raise OutputError("measurement output exceeds total byte limit")
                     if handle.write(chunk) != len(chunk):
                         raise OutputError("measurement output encountered a short write")
+        if expected_files is not None:
+            names = {entry.name for entry in stage.iterdir()}
+            if names != {item[0] for item in expected_files}:
+                raise OutputError("staged bundle file inventory differs from expected")
+            for name, size, digest in expected_files:
+                staged = stage / name
+                _verify_bundle_file(staged, owned[staged], size, digest)
         attempted = True
         _publish(stage, target)
         return target
@@ -647,7 +698,10 @@ def _bundle(
             error.add_note(f"publication was attempted; inspect {target} before retrying")
         _cleanup(stage, error, owned, identity)
         if isinstance(error, OSError):
-            raise OutputError("measurement output publication failed") from error
+            detail = "measurement output publication failed"
+            if attempted:
+                detail += f"; inspect {target} before retrying"
+            raise OutputError(detail) from error
         raise
 
 

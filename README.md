@@ -159,6 +159,19 @@ declared, and off-frame cuts are rejected. The XML references the absolute
 source path; review it before sharing. Final Cut Pro import is not yet verified.
 See [FCPXML contracts](docs/fcpxml-export.md).
 
+### Request encoder I-frames at native scene cuts
+
+```bash
+frame-quorum native-qp local.mkv --detectors luminance --output-dir ./new-qp
+python -I examples/native_qp.py
+```
+
+This publishes an ASCII `scenes.qp` plus a digest audit for x264/x265-style
+`--qpfile` use. It requires a complete, unsampled, unwindowed decode and records
+actual zero-based decoded frame ordinals, not estimated VFR frame numbers. The
+encoder must receive that same unchanged frame sequence; no encoder execution
+or compatibility certification is implied. See [native QP contracts](docs/native-qp.md).
+
 ### Tune native scene thresholds without decoding again
 
 ```bash

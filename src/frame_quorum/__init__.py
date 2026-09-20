@@ -95,6 +95,7 @@ from .native_pixel_changes import (
     write_native_pixel_change_replay,
     write_native_pixel_changes,
 )
+from .native_qp import NativeQPResult, write_native_qp_bundle
 from .native_scene_images import (
     NativeSceneImageConfig,
     NativeSceneImageResult,
@@ -216,6 +217,7 @@ __all__ = [
     "NativePixelChangeSample",
     "NativePixelChangeStream",
     "NativePixelChangeUpdate",
+    "NativeQPResult",
     "NativeReplayResult",
     "NativeScene",
     "NativeSceneConfig",
@@ -306,6 +308,7 @@ __all__ = [
     "write_native_pixel_change_replay",
     "write_native_pixel_change_stream",
     "write_native_pixel_changes",
+    "write_native_qp_bundle",
     "write_native_replay",
     "write_otio_bundle",
 ]
