@@ -24,6 +24,7 @@ from .demo import create_demo_sequence
 from .editing import render_edl, render_scene_timecodes
 from .errors import ConfigurationError, FrameQuorumError, OutputError
 from .exports import render_detection_csv
+from .fcpxml_export import FCPXMLExportConfig, write_fcpxml_bundle
 from .models import AnimationConfig, ConcurrencyConfig, Frame, ScanConfig, SelectionConfig
 from .native_av import NativeAVSplitConfig
 from .native_av_splitting import split_native_av
@@ -224,6 +225,24 @@ def build_parser() -> argparse.ArgumentParser:
             "--" + field.replace("_", "-"), type=int, default=getattr(OTIOExportConfig(), field)
         )
     otio.set_defaults(handler=_handle_native_otio)
+
+    fcpxml = commands.add_parser(
+        "native-fcpxml", help="detect native scenes and export frame-aligned cuts-only FCPXML 1.9"
+    )
+    _add_native_options(fcpxml)
+    _add_detector_options(fcpxml)
+    fcpxml.add_argument("--output-dir", "-o", type=Path, required=True)
+    fcpxml.add_argument("--media-origin", type=_exact_seconds, required=True)
+    fcpxml.add_argument("--available-start", type=_exact_seconds, required=True)
+    fcpxml.add_argument("--available-end", type=_exact_seconds, required=True)
+    fcpxml.add_argument("--final-end", type=_exact_seconds)
+    fcpxml.add_argument("--frame-rate", type=_exact_seconds, required=True)
+    fcpxml.add_argument("--width", type=int, required=True)
+    fcpxml.add_argument("--height", type=int, required=True)
+    fcpxml.add_argument("--title", default="Frame Quorum")
+    fcpxml.add_argument("--max-clips", type=int, default=10_000)
+    fcpxml.add_argument("--max-output-bytes", type=int, default=64 * 1024 * 1024)
+    fcpxml.set_defaults(handler=_handle_native_fcpxml)
 
     measure = commands.add_parser("native-measure", help="capture bounded replayable native measurements")
     _add_native_options(measure)
@@ -674,6 +693,41 @@ def _handle_native_otio(args: argparse.Namespace) -> int:
     sys.stdout.write(
         json.dumps(exported.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n"
     )
+    return 0
+
+
+def _handle_native_fcpxml(args: argparse.Namespace) -> int:
+    options = FCPXMLExportConfig(
+        frame_rate=args.frame_rate,
+        width=args.width,
+        height=args.height,
+        title=args.title,
+        max_clips=args.max_clips,
+        max_output_bytes=args.max_output_bytes,
+    )
+    media = OTIOMedia(args.input.absolute(), args.media_origin, args.available_start, args.available_end)
+    video = _native_config(args)
+    if video.frame_step != 1:
+        raise ConfigurationError("native FCPXML export requires unsampled analysis")
+    if video.video_stream != 0:
+        raise ConfigurationError("native FCPXML export supports only video_stream=0")
+    result = detect_native_scenes(
+        args.input,
+        NativeSceneConfig(
+            video=video,
+            detectors=_detector_configs(args),
+            minimum_votes=args.minimum_votes,
+            min_scene_samples=args.min_scene_samples,
+        ),
+    )
+    exported = write_fcpxml_bundle(
+        otio_cuts_from_native(result, final_end=args.final_end), media, args.output_dir, options
+    )
+    payload = json.dumps(exported.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n"
+    written = sys.stdout.write(payload)
+    if type(written) is not int or written != len(payload):
+        raise OutputError("could not write complete native FCPXML result")
+    sys.stdout.flush()
     return 0
 
 

@@ -143,6 +143,22 @@ availability stays null, and audio is included only by an explicit unverified
 caller declaration. This is editorial interchange, not media rendering or
 multi-track relinking certification. See [OTIO contracts](docs/otio-export.md).
 
+### Export frame-aligned native cuts to FCPXML 1.9
+
+```bash
+frame-quorum native-fcpxml source.nut --detectors luminance \
+  --media-origin 0 --available-start 0 --available-end 6/25 \
+  --frame-rate 25 --width 8 --height 6 --final-end 6/25 \
+  --output-dir ./editor-xml
+python -I examples/native_fcpxml.py
+```
+
+This publishes one video-only FCPXML project plus an audit in a new directory.
+Frame rate, dimensions, media availability and unknown tail endpoint must be
+declared, and off-frame cuts are rejected. The XML references the absolute
+source path; review it before sharing. Final Cut Pro import is not yet verified.
+See [FCPXML contracts](docs/fcpxml-export.md).
+
 ### Tune native scene thresholds without decoding again
 
 ```bash

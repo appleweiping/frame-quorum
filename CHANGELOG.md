@@ -4,6 +4,14 @@ All notable changes are documented here. The project follows semantic versioning
 
 ## [Unreleased]
 
+### Frame-aligned FCPXML 1.9 cuts-only export
+
+- Add a bounded, original single-asset video-only FCPXML timeline with exact
+  rational cut and contiguous record times, explicit media origin/availability,
+  frame-lattice admission, CLI/API and a generated CFR example.
+- Publish XML and SHA256 audit in one owned no-replace directory; do not claim
+  source authentication, DTD validation or Final Cut Pro import support.
+
 ### Offline native scene HTML overview
 
 - Publish verified scene stills, an escaped offline HTML table and hash-bound

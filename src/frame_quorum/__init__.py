@@ -16,6 +16,12 @@ from .benchmark import (
 from .detectors import DetectorName, Transition, detect_transitions
 from .editing import render_edl, render_scene_timecodes
 from .exports import render_decision_csv, render_detection_csv, write_decision_csv
+from .fcpxml_export import (
+    FCPXMLExportConfig,
+    FCPXMLExportResult,
+    render_fcpxml,
+    write_fcpxml_bundle,
+)
 from .models import (
     AnimationConfig,
     ConcurrencyConfig,
@@ -169,6 +175,8 @@ __all__ = [
     "DetectionResult",
     "DetectorName",
     "EvaluationMetrics",
+    "FCPXMLExportConfig",
+    "FCPXMLExportResult",
     "Frame",
     "FrameDecision",
     "FrameMetrics",
@@ -280,6 +288,7 @@ __all__ = [
     "render_decision_csv",
     "render_detection_csv",
     "render_edl",
+    "render_fcpxml",
     "render_native_detection_csv",
     "render_otio",
     "render_scene_timecodes",
@@ -290,6 +299,7 @@ __all__ = [
     "split_native_av",
     "split_native_video",
     "write_decision_csv",
+    "write_fcpxml_bundle",
     "write_native_histogram_replay",
     "write_native_histograms",
     "write_native_measurements",
