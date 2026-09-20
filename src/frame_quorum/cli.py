@@ -36,6 +36,7 @@ from .native_histograms import (
     write_native_histograms,
 )
 from .native_load_fcpxml import write_loaded_fcpxml_bundle
+from .native_load_qp import write_loaded_qp_bundle
 from .native_measurements import (
     NativeMeasurementLimits,
     analyze_native_measurements,
@@ -278,6 +279,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     loaded_overview.add_argument("--max-input-bytes", type=int, default=8 * 1024 * 1024)
     loaded_overview.set_defaults(handler=_handle_native_load_overview)
+
+    loaded_qp = commands.add_parser(
+        "native-load-qp", help="load scene-start CSV as encoder QP I-frame requests"
+    )
+    _add_native_options(loaded_qp)
+    loaded_qp.add_argument("--scene-csv", type=Path, required=True)
+    loaded_qp.add_argument("--output-dir", "-o", type=Path, required=True)
+    loaded_qp.add_argument("--max-input-bytes", type=int, default=8 * 1024 * 1024)
+    loaded_qp.add_argument("--max-scenes", type=int, default=10_000)
+    loaded_qp.add_argument("--max-output-bytes", type=int, default=32 * 1024 * 1024)
+    loaded_qp.set_defaults(handler=_handle_native_load_qp)
 
     qp = commands.add_parser("native-qp", help="export complete native scene cuts as encoder QP I-frames")
     _add_native_options(qp)
@@ -851,6 +863,24 @@ def _handle_native_qp(args: argparse.Namespace) -> int:
     written = sys.stdout.write(payload)
     if type(written) is not int or written != len(payload):
         raise OutputError("could not write complete native QP result")
+    sys.stdout.flush()
+    return 0
+
+
+def _handle_native_load_qp(args: argparse.Namespace) -> int:
+    exported = write_loaded_qp_bundle(
+        args.input,
+        args.scene_csv,
+        args.output_dir,
+        video_limits=_native_config(args),
+        max_input_bytes=args.max_input_bytes,
+        max_scenes=args.max_scenes,
+        max_output_bytes=args.max_output_bytes,
+    )
+    payload = json.dumps(exported.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n"
+    written = sys.stdout.write(payload)
+    if type(written) is not int or written != len(payload):
+        raise OutputError("could not write complete loaded QP result")
     sys.stdout.flush()
     return 0
 

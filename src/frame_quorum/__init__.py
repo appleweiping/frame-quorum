@@ -69,6 +69,7 @@ from .native_load_fcpxml import (
     load_native_scene_csv,
     write_loaded_fcpxml_bundle,
 )
+from .native_load_qp import LoadedQPResult, write_loaded_qp_bundle
 from .native_measurements import (
     NativeMeasurementLimits,
     NativeMeasurements,
@@ -196,6 +197,7 @@ __all__ = [
     "HistogramMode",
     "HistogramStatistic",
     "LoadedFCPXMLResult",
+    "LoadedQPResult",
     "LoadedSceneOverviewResult",
     "LoadedSceneStarts",
     "NativeAVSplitConfig",
@@ -316,6 +318,7 @@ __all__ = [
     "write_decision_csv",
     "write_fcpxml_bundle",
     "write_loaded_fcpxml_bundle",
+    "write_loaded_qp_bundle",
     "write_native_histogram_replay",
     "write_native_histograms",
     "write_native_measurements",

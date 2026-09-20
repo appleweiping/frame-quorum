@@ -201,6 +201,18 @@ actual zero-based decoded frame ordinals, not estimated VFR frame numbers. The
 encoder must receive that same unchanged frame sequence; no encoder execution
 or compatibility certification is implied. See [native QP contracts](docs/native-qp.md).
 
+Edited scene-list cuts can feed the same QP instruction format without running
+the detector:
+
+```bash
+frame-quorum native-load-qp local.mkv --scene-csv scenes.csv --output-dir ./loaded-qp
+python -I examples/native_load_qp.py
+```
+
+The [loaded QP contract](docs/native-load-qp.md) requires a complete unsampled
+decode and records distinct CSV provenance; it does not verify later encoder
+input.
+
 ### Tune native scene thresholds without decoding again
 
 ```bash
